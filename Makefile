@@ -1,11 +1,12 @@
 CXXFLAGS := -std=c++11 -g -Wall -O2 -ftree-vectorize -Wno-unused-local-typedefs -Wno-unknown-warning-option ${CXXFLAGS}
-INCLUDES = -Isrc/ \
-	   -Iinclude/ \
-	   -I../kodo/src/ \
-	   -I../kodo/bundle_dependencies/boost-e92f30/master/ \
-	   -I../kodo/bundle_dependencies/fifi-6ca972/master/src/ \
-	   -I../kodo/bundle_dependencies/sak-602ce9/master/src/ \
-	   -I../kodo/bundle_dependencies/gauge-d53326/master/src/ \
+
+KODO_DIR  ?= ../kodo/src/
+SAK_DIR   ?= ../kodo/bundle_dependencies/sak-602ce9/master/src/
+FIFI_DIR  ?= ../kodo/bundle_dependencies/fifi-6ca972/master/src/
+GAUGE_DIR ?= ../kodo/bundle_dependencies/gauge-d53326/master/src/
+BOOST_DIR ?= ../kodo/bundle_dependencies/boost-e92f30/master/
+
+INCLUDES = -Isrc/ -I $(KODO_DIR) -I $(SAK_DIR) -I $(FIFI_DIR) -I $(GAUGE_DIR) -I $(BOOST_DIR)
 
 BUILD = build
 BIN = $(BUILD)/$(shell $(CXX) -dumpmachine)
