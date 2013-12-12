@@ -1,7 +1,7 @@
 #include <functional>
 #include <iostream>
+#include <getopt.h>
 
-#include "arguments.hpp"
 #include "signal.hpp"
 #include "io.hpp"
 #include "rlnc_codes.hpp"
@@ -16,6 +16,25 @@
 #include "final_layer.hpp"
 #include "buffer_pkt.hpp"
 #include "buffer_pool.hpp"
+
+struct args {
+    char address[20]   = "localhost";
+    char port[20]      = "8899";
+    size_t timeout     = 100;
+    size_t symbols     = 100;
+    size_t symbol_size = 1300;
+    double errors[4]   = {0.99, 0.99, 0.1, 0.99};
+};
+
+struct option options[] = {
+    {"address",     required_argument, NULL, 1},
+    {"port",        required_argument, NULL, 2},
+    {"timeout",     required_argument, NULL, 3},
+    {"symbols",     required_argument, NULL, 4},
+    {"symbol_size", required_argument, NULL, 5},
+    {"loss",        required_argument, NULL, 6},
+    {0}
+};
 
 typedef fifi::binary8 field;
 
@@ -33,7 +52,6 @@ typedef len_hdr<
 
 class tcp_client : public signal, public io
 {
-    size_t m_timeout;
     client m_client;
     buffer_pkt::pointer m_buf;
 
@@ -81,12 +99,11 @@ class tcp_client : public signal, public io
 
   public:
     tcp_client(const struct args &args)
-        : m_timeout(args.timeout),
-          m_client(
+        : m_client(
                 m_client.symbols=args.symbols,
                 m_client.symbol_size=args.symbol_size,
-                m_client.remote_address=args.dst.neighbor,
-                m_client.errors=client::errors_type(args.dst.errors, args.dst.errors + e_max)
+                m_client.remote_address=args.address,
+                m_client.errors=client::errors_type(args.errors, args.errors + sizeof(args.errors))
             )
     {
         using std::placeholders::_1;
@@ -100,12 +117,12 @@ class tcp_client : public signal, public io
         io::disable_write(m_client.fd());
     }
 
-    void run()
+    void run(size_t timeout)
     {
         int res;
 
         while (signal::running()) {
-            res = io::wait(m_timeout);
+            res = io::wait(timeout);
 
             if (res == 0)
                 m_client.timer();
@@ -118,16 +135,43 @@ class tcp_client : public signal, public io
 
 int main(int argc, char **argv)
 {
-    if (parse_args(argc, argv) < 0)
-        return EXIT_FAILURE;
+    struct args args;
+    signed char a;
 
-    if (args.help) {
-        args_usage(argv[0]);
-        return EXIT_SUCCESS;
+    while ((a = getopt_long_only(argc, argv, "", options, NULL)) != -1) {
+        switch (a) {
+            case 1:
+                strncpy(args.address, optarg, 20);
+                break;
+
+            case 2:
+                strncpy(args.port, optarg, 20);
+                break;
+
+            case 3:
+                args.timeout = atoi(optarg);
+                break;
+
+            case 4:
+                args.symbols = atoi(optarg);
+                break;
+
+            case 5:
+                args.symbol_size = atoi(optarg);
+                break;
+
+            case 6:
+                args.errors[2] = strtod(optarg, NULL);
+                break;
+
+            case '?':
+                return 1;
+                break;
+        }
     }
 
     tcp_client c(args);
-    c.run();
+    c.run(args.timeout);
 
     return EXIT_SUCCESS;
 }
