@@ -100,7 +100,7 @@ if family == "udp":
     t1 = time.time()
 
     message = num + bytes(stop, 'UTF-8')
-    for j in range(1):
+    for j in range(10):
         sock.sendto(message, (dst, port))
         time.sleep(1)
 elif family == "tcp":

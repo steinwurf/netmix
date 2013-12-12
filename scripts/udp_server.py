@@ -199,11 +199,8 @@ while True:
         print("main interupted")
         sys.exit(0)
 
-    if not t0:
-        print("cont")
-        continue
-
-    print_result()
+    if t0:
+        print_result()
 
     print("", file=out)
     out.flush()

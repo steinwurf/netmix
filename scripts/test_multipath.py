@@ -62,6 +62,6 @@ try:
 
 
             i += 1
-            time.sleep(1)
+            time.sleep(15)
 except KeyboardInterrupt:
     pass
