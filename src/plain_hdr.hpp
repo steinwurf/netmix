@@ -65,7 +65,7 @@ class plain_hdr : public super
 
         hdr->type = type_req;
         hdr->group = 0;
-        hdr->seq = htons(m_seq_recv);
+        hdr->seq = htobe16(m_seq_recv);
         req->received = htobe64(m_pkts_recv.to_ullong());
 
         super::write_pkt(buf);
@@ -90,7 +90,7 @@ class plain_hdr : public super
         m_pkts_send = be64toh(req->received);
 
         /* fast forward to last seen */
-        while (m_buf_sent.size() > m_seq_sent - ntohs(hdr->seq))
+        while (m_buf_sent.size() > m_seq_sent - be16toh(hdr->seq))
             m_buf_sent.pop_front();
 
         resend_packets();
@@ -102,15 +102,15 @@ class plain_hdr : public super
 
         hdr->type = type_data;
         hdr->group = 0;
-        hdr->seq = htons(m_seq_sent++);
+        hdr->seq = htobe16(m_seq_sent++);
     }
 
     void data_hdr_process(buf_ptr &buf)
     {
         auto hdr = header(buf->head());
-        m_offset_recv = ntohs(hdr->seq) - m_seq_recv;
+        m_offset_recv = be16toh(hdr->seq) - m_seq_recv;
 
-        if (ntohs(hdr->seq) < m_seq_recv) {
+        if (be16toh(hdr->seq) < m_seq_recv) {
             req_hdr_send();
             return;
         }

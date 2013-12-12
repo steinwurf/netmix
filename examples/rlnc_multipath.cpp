@@ -332,8 +332,8 @@ class coder
     {
         buf_ptr buf;
         std::vector<uint16_t> counts;
+        size_t max = 0;
         int best_fd = 0;
-        int max = 0;
 
         if (m_encoded_received < m_status_interval)
             return;
@@ -342,8 +342,10 @@ class coder
             if (!p)
                 continue;
 
-            if (p->received_packets > max)
+            if (p->received_packets > max) {
                 best_fd = p->fd();
+                max = p->received_packets;
+            }
 
             counts.push_back(htobe16(p->received_packets));
             p->received_packets = 0;
@@ -512,7 +514,12 @@ class coder
         if (m_peers[fd]->is_alone())
             return;
 
-        std::cout << "sent block " << m_enc_block << std::endl;
+        std::cout << "sent block " << m_enc_block << ", ";
+        for (auto &p : m_peers)
+            if (p)
+                std::cout << p->sent_packets << " ";
+        std::cout << std::endl;
+
         m_enc->initialize(m_enc_factory);
         m_enc_block++;
         m_io.enable_read(m_tun.fd());

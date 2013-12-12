@@ -1,6 +1,6 @@
 #include <iostream>
+#include <getopt.h>
 
-#include "arguments.hpp"
 #include "io.hpp"
 #include "signal.hpp"
 #include "pause_hdr.hpp"
@@ -10,6 +10,21 @@
 #include "buffer_pool.hpp"
 #include "buffer_pkt.hpp"
 #include "final_layer.hpp"
+
+struct args {
+    char address[20] = "localhost";
+    char port[20]    = "8899";
+    size_t timeout   = 100;
+    double loss      = .1;
+};
+
+struct option options[] = {
+    {"address", required_argument, NULL, 1},
+    {"port",    required_argument, NULL, 2},
+    {"timeout", required_argument, NULL, 3},
+    {"loss",    required_argument, NULL, 4},
+    {0}
+};
 
 typedef pause_hdr<
         plain_hdr<
@@ -21,8 +36,6 @@ typedef pause_hdr<
 
 class udp_server : public signal, public io, public server
 {
-    size_t m_timeout;
-
     void read_pkt(int)
     {
         auto buf = server::buffer();
@@ -35,8 +48,11 @@ class udp_server : public signal, public io, public server
 
   public:
     udp_server(const struct args &args)
-        : server(loss_prob=.10),
-          m_timeout(args.timeout)
+        : server(
+                server::local_address=args.address,
+                server::port=args.port,
+                server::loss_prob=args.loss
+                )
     {
         using std::placeholders::_1;
 
@@ -45,12 +61,12 @@ class udp_server : public signal, public io, public server
         io::add_cb(server::fd(), rp, NULL);
     }
 
-    void run()
+    void run(size_t timeout)
     {
         int res;
 
         while (signal::running()) {
-            res = io::wait(m_timeout);
+            res = io::wait(timeout);
 
             if (res < 0)
                 break;
@@ -65,16 +81,35 @@ class udp_server : public signal, public io, public server
 
 int main(int argc, char **argv)
 {
-    if (parse_args(argc, argv) < 0)
-        return EXIT_FAILURE;
+    struct args args;
+    char a;
 
-    if (args.help) {
-        args_usage(argv[0]);
-        return EXIT_SUCCESS;
+    while ((a = getopt_long_only(argc, argv, "", options, NULL)) != -1) {
+        switch (a) {
+            case 1:
+                strncpy(args.address, optarg, 20);
+                break;
+
+            case 2:
+                strncpy(args.port, optarg, 20);
+                break;
+
+            case 3:
+                args.timeout = atoi(optarg);
+                break;
+
+            case 4:
+                args.loss = strtod(optarg, NULL);
+                break;
+
+            case '?':
+                return 1;
+                break;
+        }
     }
 
     udp_server u(args);
-    u.run();
+    u.run(args.timeout);
 
     return EXIT_SUCCESS;
 }

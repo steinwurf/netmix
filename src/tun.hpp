@@ -114,9 +114,10 @@ class tun :
 
     bool write_pkt(buf_ptr &buf)
     {
+        int len = buf->len();
         int res = write(m_fd, buf->head(), buf->len());
 
-        if (res == buf->len())
+        if (res == len)
             return true;
 
         if (res > 0) {

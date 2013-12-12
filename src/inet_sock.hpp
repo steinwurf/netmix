@@ -82,19 +82,17 @@ class inet_sock :
 
     int sock_bind_client(int family)
     {
-        struct sockaddr_in sa4 = {
-            .sin_family = AF_INET,
-            .sin_port = 0,
-        };
-
-        struct sockaddr_in6 sa6 = {
-            .sin6_family = AF_INET6,
-            .sin6_port = 0,
-        };
-
+        struct sockaddr_in sa4 = {0};
+        struct sockaddr_in6 sa6 = {0};
         struct sockaddr *sa;
         socklen_t len;
         int res = -1;
+
+        sa4.sin_family = AF_INET;
+        sa4.sin_port = 0;
+
+        sa6.sin6_family = AF_INET6;
+        sa6.sin6_port = 0;
 
         if (m_local_address == nullptr)
             return 0;
@@ -198,7 +196,7 @@ class inet_sock :
             throw std::system_error(errno, std::system_category(),
                                     "unable to bind");
 
-        if (listen(m_fd, 1) < 0)
+        if (socktype == SOCK_STREAM && listen(m_fd, 1) < 0)
             throw std::system_error(errno, std::system_category(),
                                     "unable to listen on socket");
 
