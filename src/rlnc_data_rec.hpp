@@ -37,7 +37,6 @@ class rlnc_data_rec : public super, public rlnc_data_base<recoder>
 
         do {
             get_pkt(buf);
-            std::cout << "rec len: " << buf->len() << std::endl;
             super::write_pkt(buf);
             buf->reset();
         } while (super::decrease_budget());
@@ -76,6 +75,7 @@ class rlnc_data_rec : public super, public rlnc_data_base<recoder>
             return;
 
         base::put_status(buf->data(), &m_decoder_rank);
+        std::cout << "rec ack rank " << m_decoder_rank << std::endl;
 
         if (m_decoder_rank < super::rlnc_symbols())
             return;
@@ -86,7 +86,7 @@ class rlnc_data_rec : public super, public rlnc_data_base<recoder>
 
     void process_stop(buf_ptr &buf)
     {
-        std::cout << "stop" << std::endl;
+        std::cout << "rec stopped" << std::endl;
         m_stopped = true;
     }
 
@@ -141,7 +141,6 @@ class rlnc_data_rec : public super, public rlnc_data_base<recoder>
                 break;
 
             case super::rlnc_ack:
-                std::cout << "ack len: " << buf->len() << std::endl;
                 return super::write_pkt(buf);
 
             default:
@@ -195,6 +194,8 @@ class rlnc_data_rec : public super, public rlnc_data_base<recoder>
 
     void timer()
     {
+        super::timer();
+
         if (m_decoder_rank == m_encoder_rank)
             return;
 
