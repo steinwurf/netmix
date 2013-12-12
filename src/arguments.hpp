@@ -120,7 +120,7 @@ static inline int args_usage(char *name)
 
 static inline int parse_args(int argc, char **argv)
 {
-    char c;
+    signed char c;
 
     while ((c = getopt_long_only(argc, argv, "", options, NULL)) != -1) {
         switch (c) {

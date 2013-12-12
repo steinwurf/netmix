@@ -116,7 +116,7 @@ class edge : public signal, public io
 int main(int argc, char **argv)
 {
     struct args args;
-    char c;
+    signed char c;
 
     while ((c = getopt_long_only(argc, argv, "", options, NULL)) != -1) {
         switch (c) {

@@ -648,7 +648,7 @@ class server : public coder<peer_stack>
 int main(int argc, char **argv)
 {
     struct args args;
-    char a;
+    signed char a;
 
     while ((a = getopt_long_only(argc, argv, "", options, NULL)) != -1) {
         switch (a) {
