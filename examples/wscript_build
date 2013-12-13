@@ -1,0 +1,39 @@
+#! /usr/bin/env python
+# encoding: utf-8
+
+deps = ['netmix_includes', 'kodo_includes', 'fifi_includes',
+        'sak_includes', 'boost_includes']
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('tcp_client.cpp'),
+    target   = 'tcp_client',
+    use      = deps
+)
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('tcp_server.cpp'),
+    target   = 'tcp_server',
+    use      = deps
+)
+
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('udp_client.cpp'),
+    target   = 'udp_client',
+    use      = deps
+)
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('udp_server.cpp'),
+    target   = 'udp_server',
+    use      = deps
+)
+
