@@ -16,10 +16,19 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* address to connect to */
     char address[20]         = "localhost";
+
+    /* port to connect to */
     char port[20]            = "15887";
+
+    /* interface to relay raw packets from/to */
     char interface[IFNAMSIZ] = "lo";
+
+    /* mac address to relay raw packets from/to */
     char *neighbor           = NULL;
+
+    /* synthetic loss probability for packets from neighbor */
     double loss              = .5;
 };
 

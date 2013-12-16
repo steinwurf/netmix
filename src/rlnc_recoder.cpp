@@ -21,18 +21,36 @@
 #include "final_layer.hpp"
 
 struct side_args {
+    /* interface to use */
     char interface[IFNAMSIZ] = "lo";
+
+    /* MAC address of neighbor node on interface */
     char *neighbor = NULL;
+
+    /* MAC address of helper node in interface */
     char *helper = NULL;
+
+    /* MAC address of node sending packets to neighbor */
     char *two_hop = NULL;
 };
 
 struct args {
+    /* arguments for first stack */
     struct side_args a;
+
+    /* arguments for second stack */
     struct side_args b;
+
+    /* number of symbols in one block */
     size_t symbols = 100;
+
+    /* size of each symbol */
     size_t symbol_size = 1450;
+
+    /* time to wait for ack */
     size_t timeout = 20;
+
+    /* synthetic error probabilities */
     std::vector<double> errors = {0.1, 0.1, 0.5, 0.75};
 };
 

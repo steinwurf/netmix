@@ -9,26 +9,32 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string>
+#include <cstring>
 #include <system_error>
+#include <cassert>
 
 #include "kwargs.hpp"
 
-static const char *default_tuntap = NULL;
+static const char *tuntap_default_name = NULL;
+static const char *tuntap_default_type = "tun";
 
 struct tuntap_args
 {
     static const Kwarg<const char *> interface;
+    static const Kwarg<const char *> type;
 };
 
 enum tuntap_type {
     tuntap_tun = IFF_TUN,
     tuntap_tap = IFF_TAP,
+    tuntap_arg,
 };
 
 decltype(tuntap_args::interface) tuntap_args::interface;
+decltype(tuntap_args::type) tuntap_args::type;
 
-template<tuntap_type type, class super>
-class tuntap :
+template<tuntap_type template_type, class super>
+class tuntap_base :
     public super,
     public tuntap_args
 {
@@ -37,18 +43,35 @@ class tuntap :
     int m_fd;
     size_t m_mtu;
     const char *m_interface = NULL;
+    const char *m_type_str = NULL;
     char m_tun[IFNAMSIZ];
+
+    int iface_type()
+    {
+        if (template_type != tuntap_arg)
+            return template_type;
+
+        assert(m_type_str);
+
+        if (strcmp(m_type_str, "tun") == 0)
+            return tuntap_tun;
+        else if (strcmp(m_type_str, "tap") == 0)
+            return tuntap_tap;
+        else
+            throw std::runtime_error("invalid tuntap type string");
+    }
 
     void create()
     {
         struct ifreq ifr;
+        int t = iface_type();
 
         if ((m_fd = open("/dev/net/tun", O_RDWR)) < 0)
             throw std::system_error(errno, std::system_category(),
                                     "unable to open /dev/net/tun");
 
         memset(&ifr, 0, sizeof(ifr));
-        ifr.ifr_flags = type | IFF_NO_PI;
+        ifr.ifr_flags = t | IFF_NO_PI;
 
         if (strncmp(m_interface, "lo", IFNAMSIZ) != 0)
             strncpy(ifr.ifr_name, m_interface, IFNAMSIZ);
@@ -78,9 +101,10 @@ class tuntap :
 
   public:
     template<typename... Args> explicit
-    tuntap(const Args&... a)
-        : super(a...),
-          m_interface(kwget(interface, default_tuntap, a...))
+    tuntap_base(const Args&... args)
+        : super(args...),
+          m_interface(kwget(interface, tuntap_default_name, args...)),
+          m_type_str(kwget(type, tuntap_default_type, args...))
     {
         create();
         read_mtu();
@@ -139,4 +163,16 @@ class tuntap :
         throw std::system_error(errno, std::system_category(),
                                 "unable to write pkt");
     }
+};
+
+template<class super>
+class tuntap : public tuntap_base<tuntap_arg, super>
+{
+    typedef tuntap_base<tuntap_arg, super> base;
+
+  public:
+    template<typename... Args> explicit
+    tuntap(const Args&... args)
+        : base(args...)
+    {}
 };

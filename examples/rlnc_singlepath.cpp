@@ -17,15 +17,32 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* name of virtual interface */
     char interface[IFNAMSIZ] = "tun0";
+
+    /* address to listen on (server)
+     * address to connect to (client) */
     char address[20] = "localhost";
+
+    /* port number to use for tcp connections */
     char port[20] = "8899";
+
+    /* source address to use for the connection (client only) */
     char *src = NULL;
+
+    /* number of symbols in one block */
     size_t symbols = 100;
+
+    /* size of each symbol in block */
     size_t symbol_size = 1400;
+
+    /* start as server if argument is given, client otherwise */
     bool server = false;
+
+    /* size of tcp socket buffer for sending */
     size_t send_buf = 16384;
-    size_t timeout = 100;
+
+    /* number of packets received between sending status reports */
     size_t status_interval = 50;
 };
 
@@ -37,8 +54,7 @@ struct option options[] = {
     {"symbols",         required_argument, NULL, 5},
     {"symbol_size",     required_argument, NULL, 6},
     {"server",          no_argument,       NULL, 7},
-    {"timeout",         required_argument, NULL, 8},
-    {"status_interval", required_argument, NULL, 9},
+    {"status_interval", required_argument, NULL, 8},
     {0}
 };
 
@@ -408,9 +424,6 @@ int main(int argc, char **argv)
                 args.server = true;
                 break;
             case 8:
-                args.timeout = atoi(optarg);
-                break;
-            case 9:
                 args.status_interval = atoi(optarg);
                 break;
             case '?':

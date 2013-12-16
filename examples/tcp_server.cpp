@@ -18,10 +18,19 @@
 #include "buffer_pool.hpp"
 
 struct args {
+    /* address to listen on */
     char address[20]   = "localhost";
+
+    /* port to listen on */
     char port[20]      = "8899";
+
+    /* number of symbols in block */
     size_t symbols     = 100;
+
+    /* size of each symbol */
     size_t symbol_size = 1300;
+
+    /* synthetic error probability (errors[2]) */
     double errors[4]   = {0.99, 0.99, 0.1, 0.99};
 };
 

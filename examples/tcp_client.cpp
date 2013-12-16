@@ -18,11 +18,22 @@
 #include "buffer_pool.hpp"
 
 struct args {
+    /* address to connect to */
     char address[20]   = "localhost";
+
+    /* port to connect to */
     char port[20]      = "8899";
+
+    /* time to wait for ACK before sending more symbols */
     size_t timeout     = 100;
+
+    /* number of symbols in a block */
     size_t symbols     = 100;
+
+    /* size of each symbol */
     size_t symbol_size = 1300;
+
+    /* synthetic error probability (errors[2]) */
     double errors[4]   = {0.99, 0.99, 0.1, 0.99};
 };
 
