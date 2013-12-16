@@ -3,9 +3,9 @@
 #include <tuntap.hpp>
 
 template<class super>
-class tun : public tuntap<tuntap_tun, super>
+class tun : public tuntap<tuntap_tap, super>
 {
-    typedef tuntap<tuntap_tun, super> base;
+    typedef tuntap<tuntap_tap, super> base;
 
   public:
     template<typename... Args> explicit
