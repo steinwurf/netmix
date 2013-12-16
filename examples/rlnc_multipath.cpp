@@ -18,18 +18,39 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* name of virtual interface */
     char interface[IFNAMSIZ] = "tun0";
+
+    /* address to listen on (server)
+     * address to connect to (client) */
     char address[20]         = "localhost";
+
+    /* port number to use for tcp connections */
     char port[20]            = "8899";
+
+    /* source address to use for the first tcp connection (client only) */
     char *a_src              = NULL;
+
+    /* source addres to use for the second tcp connection (client only) */
     char *b_src              = NULL;
+
+    /* start as server if argument is given, client otherwise */
     bool server              = false;
+
+    /* number of symbols in one block */
     size_t symbols           = 100;
+
+    /* size of each symbol in block */
     size_t symbol_size       = 1400;
+
+    /* size of tcp socket buffer for sending */
     size_t send_buf          = 16384;
-    size_t timeout           = 100;
+
+    /* number of packets received between sending status reports */
     size_t status_interval   = 50;
-    double overshoot         = 1.5;
+
+    /* ratio of extra packets distributed on each connection */
+    double overshoot         = 1.2;
 };
 
 struct option options[] = {
@@ -43,8 +64,7 @@ struct option options[] = {
     {"server",          no_argument,       NULL, 8},
     {"send_buf",        required_argument, NULL, 9},
     {"overshoot",       required_argument, NULL, 10},
-    {"timeout",         required_argument, NULL, 11},
-    {"status_interval", required_argument, NULL, 12},
+    {"status_interval", required_argument, NULL, 11},
     {0}
 };
 
@@ -566,12 +586,12 @@ class coder
         m_status_hdr_size += 2;
     }
 
-    void run(size_t timeout)
+    void run()
     {
         int res;
 
         while (m_sig.running()) {
-            res = m_io.wait(timeout);
+            res = m_io.wait();
 
             if (res < 0)
                 break;
@@ -683,9 +703,6 @@ int main(int argc, char **argv)
                 args.overshoot = strtod(optarg, NULL);
                 break;
             case 11:
-                args.timeout = atoi(optarg);
-                break;
-            case 12:
                 args.status_interval = atoi(optarg);
                 break;
             case '?':
@@ -696,10 +713,10 @@ int main(int argc, char **argv)
 
     if (args.server) {
         server s(args);
-        s.run(args.timeout);
+        s.run();
     } else {
         client c(args);
-        c.run(args.timeout);
+        c.run();
     }
 
     return 0;

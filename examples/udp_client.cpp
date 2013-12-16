@@ -13,8 +13,13 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* address to send datagrams to */
     char address[20] = "localhost";
+
+    /* port to send datagrams to */
     char port[20]    = "8899";
+
+    /* time to wait for ack */
     size_t timeout   = 100;
 };
 

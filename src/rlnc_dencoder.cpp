@@ -25,15 +25,34 @@
 
 struct args
 {
+    /* address to connect to */
     char    address[20]         = "localhost";
+
+    /* port to connect to */
     char    port[20]            = "15887";
+
+    /* interface to send/receive encoded packets on */
     char    interface[IFNAMSIZ] = "lo";
+
+    /* MAC address of node to send/receive encoded packets from/to */
     char    *neighbor           = NULL;
+
+    /* MAC of node injecting packets from neighbor */
     char    *helper             = NULL;
+
+    /* address of node sending packets to neighbor */
     char    *two_hop            = NULL;
+
+    /* synthetic error probabilities */
     std::vector<double> errors  = {0.1, 0.1, 0.5, 0.75};
+
+    /* number of symbols in one block */
     size_t  symbols             = 100;
+
+    /* size of each symbol */
     size_t  symbol_size         = 1450;
+
+    /* milliseconds to wait for ACK */
     ssize_t timeout             = 20;
 };
 

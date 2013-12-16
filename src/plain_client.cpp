@@ -17,9 +17,16 @@
 
 struct args
 {
+    /* name of virtual interface */
     char *interface          = NULL;
+
+    /* address to listen for relay on */
     char address[20]         = "localhost";
+
+    /* port to listen for relay on */
     char port[20]            = "15887";
+
+    /* type of virtual interface (tun/tap) */
     char type[sizeof("tun")] = "tun";
 };
 

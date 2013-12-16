@@ -12,9 +12,16 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* address to listen on */
     char address[20] = "localhost";
+
+    /* port to listen on */
     char port[20]    = "8899";
+
+    /* milliseconds to wait for missing packets */
     size_t timeout   = 100;
+
+    /* syntethic loss probability */
     double loss      = .1;
 };
 

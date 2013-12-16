@@ -17,11 +17,23 @@
 #include "final_layer.hpp"
 
 struct args {
+    /* address to listen on (server)
+     * address to connect to (client) */
     char address[20] = "localhost";
+
+    /* port to use for connection */
     char port[20]    = "15887";
+
+    /* interval between sending data */
     size_t interval  = 1000;
+
+    /* number of data writes */
     size_t count     = 0;
+
+    /* start as server instead of client */
     bool server      = false;
+
+    /* don't print results on the fly */
     bool quiet       = false;
 };
 

@@ -19,12 +19,25 @@
 #include "io.hpp"
 
 struct args {
+    /* first interface to use */
     char a_interface[IFNAMSIZ] = "lo";
+
+    /* second interface to use (can be equal to a_interface) */
     char b_interface[IFNAMSIZ] = "lo";
+
+    /* MAC of neighbor node on first interface */
     char *a_neighbor           = NULL;
+
+    /* MAC address of node on second interface */
     char *b_neighbor           = NULL;
+
+    /* synthetic error probabilities */
     std::vector<double> errors = {0.1, 0.1, 0.5, 0.75};
+
+    /* number of symbols in a block */
     size_t symbols             = 100;
+
+    /* size of each symbol */
     size_t symbol_size         = 1450;
 };
 
