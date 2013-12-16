@@ -17,19 +17,21 @@
 
 struct args
 {
-    char *interface = NULL;
-    char address[20] = "localhost";
-    char port[20]    = "15887";
+    char *interface          = NULL;
+    char address[20]         = "localhost";
+    char port[20]            = "15887";
+    char type[sizeof("tun")] = "tun";
 };
 
 static struct option options[] = {
     {"interface",   required_argument, NULL, 1},
     {"address",     required_argument, NULL, 2},
     {"port",        required_argument, NULL, 3},
+    {"type",        required_argument, NULL, 4},
     {0}
 };
 
-typedef tun<
+typedef tuntap<
         buffer_pool<buffer_pkt,
         final_layer
         >> tun_stack;
@@ -112,7 +114,8 @@ class client : public signal, public io
 
   public:
     client(const struct args &args)
-        : m_tun(m_tun.interface=args.interface),
+        : m_tun(m_tun.interface=args.interface,
+                m_tun.type=args.type),
           m_srv(server_stack::local_address=args.address,
                 server_stack::port=args.port)
     {
@@ -151,6 +154,9 @@ int main(int argc, char **argv)
                 break;
             case 3:
                 strncpy(args.port, optarg, 20);
+                break;
+            case 4:
+                strncpy(args.type, optarg, sizeof(args.type));
                 break;
             case '?':
                 return EXIT_FAILURE;
