@@ -27,6 +27,9 @@ struct args {
     /* port number to use for tcp connections */
     char port[20] = "8899";
 
+    /* type of virtual interface (tun/tap) */
+    char type[sizeof("tun")] = "tun";
+
     /* source address to use for the connection (client only) */
     char *src = NULL;
 
@@ -55,10 +58,11 @@ struct option options[] = {
     {"symbol_size",     required_argument, NULL, 6},
     {"server",          no_argument,       NULL, 7},
     {"status_interval", required_argument, NULL, 8},
+    {"type",            required_argument, NULL, 9},
     {0}
 };
 
-typedef tun<
+typedef tuntap<
         buffer_pool<buffer_pkt,
         final_layer
         >> tun_stack;
@@ -310,7 +314,8 @@ class handler
 
   public:
     handler(const struct args &args)
-        : m_tun(tun_stack::interface=args.interface),
+        : m_tun(tun_stack::interface=args.interface,
+                tun_stack::type=args.type),
           m_enc(args.symbols, args.symbol_size),
           m_dec(args.symbols, args.symbol_size)
     {
@@ -425,6 +430,9 @@ int main(int argc, char **argv)
                 break;
             case 8:
                 args.status_interval = atoi(optarg);
+                break;
+            case 9:
+                strncpy(args.type, optarg, sizeof(args.type));
                 break;
             case '?':
                 return 1;

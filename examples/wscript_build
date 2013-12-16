@@ -7,6 +7,22 @@ deps = ['netmix_includes', 'kodo_includes', 'fifi_includes',
 bld.program \
 (
     features = 'cxx',
+    source   = bld.path.ant_glob('rlnc_multipath.cpp'),
+    target   = 'rlnc_multipath',
+    use      = deps
+)
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('rlnc_singlepath.cpp'),
+    target   = 'rlnc_singlepath',
+    use      = deps
+)
+
+bld.program \
+(
+    features = 'cxx',
     source   = bld.path.ant_glob('tcp_client.cpp'),
     target   = 'tcp_client',
     use      = deps
@@ -37,3 +53,10 @@ bld.program \
     use      = deps
 )
 
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('udp_tap.cpp'),
+    target   = 'udp_tap',
+    use      = deps
+)

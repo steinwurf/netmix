@@ -15,7 +15,7 @@ namespace KwargsImpl {
 
     template <typename T, typename Val>
     struct Ret<T, Val, false> {
-        T operator()(const Val &v) const { return T(); }
+        T operator()(const Val &/*v*/) const { return T(); }
     };
 
     template <typename Val>
@@ -48,6 +48,6 @@ Val kwget(const Kwarg<Key>& key, Val value,
 }
 
 template <typename Key, typename Val>
-Val kwget(const Kwarg<Key>& k, const Val v) { return v; }
+Val kwget(const Kwarg<Key>& /*k*/, const Val v) { return v; }
 
 #endif

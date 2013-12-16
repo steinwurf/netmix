@@ -20,7 +20,7 @@ class final_layer
     {}
 
     void increment(size_t b = 0)
-    {}
+    { (void) b; }
 
     size_t hdr_len()
     {
