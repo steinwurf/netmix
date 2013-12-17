@@ -1,6 +1,5 @@
 #include <functional>
 
-#include "arguments.hpp"
 #include "signal.hpp"
 #include "budgets.hpp"
 #include "eth_topology.hpp"
@@ -30,7 +29,7 @@ class relay : public signal, public io
     }
 
   public:
-    relay(const struct args &args)
+    relay()
         : m_in(),
           m_out()
     {
@@ -51,13 +50,7 @@ class relay : public signal, public io
 
 int main(int argc, char **argv)
 {
-    if (parse_args(argc, argv) < 0)
-        return EXIT_FAILURE;
-
-    if (args.help)
-        return args_usage(argv[0]);
-
-    relay r(args);
+    relay r;
     r.run();
 
     return EXIT_SUCCESS;
