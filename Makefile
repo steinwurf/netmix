@@ -12,7 +12,7 @@ BUILD = build
 BIN = $(BUILD)/$(shell $(CXX) -dumpmachine)
 CACHE = $(BUILD)/$(shell $(CXX) -dumpmachine)/.cache
 EXMPL = examples
-TARGETS := rlnc_encoder rlnc_decoder rlnc_helper rlnc_recoder rlnc_dencoder \
+TARGETS := rlnc_helper rlnc_recoder rlnc_dencoder \
            plain_entry plain_relay plain_client
 EXAMPLES := tcp_client tcp_server udp_client udp_server tcping rlnc_multipath \
             rlnc_singlepath
