@@ -44,6 +44,7 @@ class tuntap_base :
     size_t m_mtu;
     const char *m_interface = NULL;
     const char *m_type_str = NULL;
+    int m_type;
     char m_tun[IFNAMSIZ];
 
     int iface_type()
@@ -64,14 +65,13 @@ class tuntap_base :
     void create()
     {
         struct ifreq ifr;
-        int t = iface_type();
 
         if ((m_fd = open("/dev/net/tun", O_RDWR)) < 0)
             throw std::system_error(errno, std::system_category(),
                                     "unable to open /dev/net/tun");
 
         memset(&ifr, 0, sizeof(ifr));
-        ifr.ifr_flags = t | IFF_NO_PI;
+        ifr.ifr_flags = m_type | IFF_NO_PI;
 
         if (strncmp(m_interface, "lo", IFNAMSIZ) != 0)
             strncpy(ifr.ifr_name, m_interface, IFNAMSIZ);
@@ -97,6 +97,9 @@ class tuntap_base :
 
         close(sock);
         m_mtu = ifr.ifr_mtu;
+
+        if (m_type == tuntap_tap)
+            m_mtu += ETH_HLEN;
     }
 
   public:
@@ -104,7 +107,8 @@ class tuntap_base :
     tuntap_base(const Args&... args)
         : super(args...),
           m_interface(kwget(interface, tuntap_default_name, args...)),
-          m_type_str(kwget(type, tuntap_default_type, args...))
+          m_type_str(kwget(type, tuntap_default_type, args...)),
+          m_type(iface_type())
     {
         create();
         read_mtu();
