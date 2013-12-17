@@ -197,7 +197,7 @@ class handler
     class signal m_sig;
     tun_stack m_tun;
     peer_ptr m_peer;
-    buf_ptr m_tun_buf;
+    //buf_ptr m_tun_buf;
 //     encoder m_enc;
 //     decoder m_dec;
 
@@ -213,15 +213,20 @@ class handler
 //         }
 //     }
 
-    void recv_tun(int fd)
+    void recv_tun(int /*fd*/)
     {
-        m_tun_buf = m_tun.buffer(m_tun.data_size_max());
+        buf_ptr buf = m_tun.buffer(m_tun.data_size_max());
 
-        if (!m_tun.read_pkt(m_tun_buf))
-            return;
+        while (m_tun.read_pkt(buf)) {
+            m_peer->write_pkt(buf);
+            buf->reset();
+        }
 
-        m_io.enable_write(m_peer->fd());
-        m_io.disable_read(fd);
+//         if (!m_tun.read_pkt(m_tun_buf))
+//             return;
+//
+//         m_io.enable_write(m_peer->fd());
+//         m_io.disable_read(fd);
 
 //         buf_ptr buf = m_tun.buffer(m_tun.data_size_max());
 //
@@ -266,14 +271,14 @@ class handler
 //         m_dec.reset();
     }
 
-    void send_peer(int fd)
-    {
-        if (m_tun_buf)
-            m_peer->write_pkt(m_tun_buf);
-
-        m_tun_buf.reset();
-        m_io.disable_write(fd);
-        m_io.enable_read(m_tun.fd());
+//     void send_peer(int fd)
+//     {
+//         if (m_tun_buf)
+//             m_peer->write_pkt(m_tun_buf);
+//
+//         m_tun_buf.reset();
+//         m_io.disable_write(fd);
+//         m_io.enable_read(m_tun.fd());
 
 //         buf_ptr buf;
 //
@@ -292,7 +297,8 @@ class handler
 //
 //         m_enc.reset();
 //         m_io.enable_read(m_tun.fd());
-    }
+
+//    }
 
   public:
     handler(const struct args &args)
@@ -313,10 +319,10 @@ class handler
         using std::placeholders::_1;
 
         auto rp = std::bind(&handler::recv_peer, this, _1);
-        auto sp = std::bind(&handler::send_peer, this, _1);
+        //auto sp = std::bind(&handler::send_peer, this, _1);
 
-        m_io.add_cb(p->fd(), rp, sp);
-        m_io.disable_write(p->fd());
+        m_io.add_cb(p->fd(), rp, NULL);
+        //m_io.disable_write(p->fd());
 
         m_peer = std::move(p);
     }
