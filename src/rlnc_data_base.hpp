@@ -28,6 +28,7 @@ class rlnc_data_base
 
     void increment(size_t b = 0)
     {
+        (void) b;
         m_coder->initialize(m_factory);
     }
 
@@ -67,4 +68,3 @@ class rlnc_data_base
         return m_hdr_len + status_len();
     }
 };
-

@@ -159,6 +159,7 @@ class helper_budgets : public super, public budgets_base<typename super::errors_
 
     void increment(size_t b = 0)
     {
+        (void) b;
         super::increment();
         base::m_budget = 0;
     }
@@ -182,6 +183,7 @@ class relay_budgets : public super, public budgets_base<typename super::errors_t
 
     void increment(size_t b = 0)
     {
+        (void) b;
         super::increment();
         base::m_budget = 0;
     }

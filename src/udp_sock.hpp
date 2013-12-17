@@ -10,7 +10,7 @@ class udp_sock_client : public super, public inet_sock<typename super::buffer_pt
 {
     typedef inet_sock<typename super::buffer_ptr> base;
 
-  protected:
+  public:
     template<typename... Args> explicit
     udp_sock_client(const Args&... args)
         : super(args...),
@@ -25,7 +25,7 @@ class udp_sock_server : public super, public inet_sock<typename super::buffer_pt
 {
     typedef inet_sock<typename super::buffer_ptr> base;
 
-  protected:
+  public:
     template<typename... Args> explicit
     udp_sock_server(const Args&... args)
         : super(args...),

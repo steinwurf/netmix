@@ -82,8 +82,10 @@ class inet_sock :
 
     int sock_bind_client(int family)
     {
-        struct sockaddr_in sa4 = {0};
-        struct sockaddr_in6 sa6 = {0};
+        sockaddr_in sa4;
+        memset(&sa4, 0, sizeof(sa4));
+        sockaddr_in6 sa6;
+        memset(&sa6, 0, sizeof(sa6));
         struct sockaddr *sa;
         socklen_t len;
         int res = -1;
@@ -123,7 +125,9 @@ class inet_sock :
 
     void sock_connect(int socktype = 0)
     {
-        struct addrinfo *res, *rp, hints = {0};
+        struct addrinfo *res, *rp;
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
         int err;
 
         hints.ai_family = AF_UNSPEC;
@@ -163,7 +167,9 @@ class inet_sock :
 
     void sock_bind(int socktype = 0)
     {
-        struct addrinfo *res, *rp, hints = {0};
+        struct addrinfo *res, *rp;
+        struct addrinfo hints;
+        memset(&hints, 0, sizeof(hints));
         int err, reuse = 1;
 
         hints.ai_family = AF_UNSPEC;

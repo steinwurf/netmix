@@ -25,7 +25,7 @@ class signal
                                     "unable to install signal");
     }
 
-    static void handler(int sig)
+    static void handler(int /*sig*/)
     {
         m_running = false;
     }
