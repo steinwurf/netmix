@@ -8,7 +8,6 @@
 
 #include "io.hpp"
 #include "signal.hpp"
-//#include "rlnc_codes.hpp"
 #include "udp_sock.hpp"
 #include "tun.hpp"
 #include "buffer_pool.hpp"
@@ -76,114 +75,6 @@ typedef udp_sock_server<
         final_layer
         >> server_stack;
 
-// typedef fifi::binary8 field;
-// typedef kodo::on_the_fly_encoder<field> kodo_encoder;
-// typedef kodo::on_the_fly_decoder<field> kodo_decoder;
-
-
-// class encoder
-// {
-//     typedef buffer_pkt::pointer buf_ptr;
-//
-//     kodo_encoder::factory m_factory;
-//     kodo_encoder::pointer m_enc;
-//
-//     size_t m_encoded_symbols = 0;
-//
-//   public:
-//     encoder(size_t symbols, size_t symbol_size)
-//         : m_factory(symbols, symbol_size),
-//           m_enc(m_factory.build())
-//     {}
-//
-//     bool is_full()
-//     {
-//         return m_enc->symbols_initialized() == m_enc->symbols();
-//     }
-//
-//     bool is_sent()
-//     {
-//         return m_encoded_symbols == m_enc->symbols_initialized();
-//     }
-//
-//     bool is_complete()
-//     {
-//         return m_encoded_symbols == m_enc->symbols();
-//     }
-//
-//     void reset()
-//     {
-//         m_enc->initialize(m_factory);
-//         m_encoded_symbols = 0;
-//     }
-//
-//     void add_pkt(buf_ptr &buf)
-//     {
-//         len_hdr::add(buf);
-//         sak::const_storage symbol(buf->head(), buf->len());
-//         m_enc->set_symbol(m_enc->symbols_initialized(), symbol);
-//     }
-//
-//     void get_pkt(buf_ptr &buf)
-//     {
-//         size_t len;
-//
-//         len = m_enc->encode(buf->data());
-//         buf->data_put(len);
-//         m_encoded_symbols++;
-//     }
-// };
-
-// class decoder
-// {
-//     typedef buffer_pkt::pointer buf_ptr;
-//
-//     kodo_decoder::factory m_factory;
-//     kodo_decoder::pointer m_dec;
-//
-//     size_t m_decoded_symbols = 0;
-//
-//   public:
-//     decoder(size_t symbols, size_t symbol_size)
-//         : m_factory(symbols, symbol_size),
-//           m_dec(m_factory.build())
-//     {}
-//
-//     bool is_complete()
-//     {
-//         return m_dec->is_complete();
-//     }
-//
-//     bool is_partial_complete()
-//     {
-//         return m_decoded_symbols < m_dec->symbols() &&
-//                m_dec->is_symbol_decoded(m_decoded_symbols);
-//     }
-//
-//     void reset()
-//     {
-//         m_dec->initialize(m_factory);
-//         m_decoded_symbols = 0;
-//     }
-//
-//     void add_pkt(buf_ptr &buf)
-//     {
-//         m_dec->decode(buf->head());
-//     }
-//
-//     void get_pkt(buf_ptr &buf)
-//     {
-//         size_t len;
-//
-//         buf->head_push(len_hdr::size());
-//         memcpy(buf->head(), m_dec->symbol(m_decoded_symbols++),
-//                m_dec->symbol_size());
-//         len = len_hdr::get(buf);
-//         buf->head_pull(len_hdr::size());
-//         buf->data_put(len);
-//     }
-// };
-
 template<class stack>
 class handler
 {
@@ -197,115 +88,35 @@ class handler
     class signal m_sig;
     tun_stack m_tun;
     peer_ptr m_peer;
-    //buf_ptr m_tun_buf;
-//     encoder m_enc;
-//     decoder m_dec;
 
-//     void send_tun()
-//     {
-//         buf_ptr buf;
-//
-//         while (m_dec.is_partial_complete()) {
-//             buf = m_tun.buffer();
-//
-//             m_dec.get_pkt(buf);
-//             m_tun.write_pkt(buf);
-//         }
-//     }
 
     void recv_tun(int /*fd*/)
     {
         buf_ptr buf = m_tun.buffer(m_tun.data_size_max());
 
-        while (m_tun.read_pkt(buf)) {
+        while (m_tun.read_pkt(buf))
+        {
             m_peer->write_pkt(buf);
             buf->reset();
         }
 
-//         if (!m_tun.read_pkt(m_tun_buf))
-//             return;
-//
-//         m_io.enable_write(m_peer->fd());
-//         m_io.disable_read(fd);
-
-//         buf_ptr buf = m_tun.buffer(m_tun.data_size_max());
-//
-//         while (m_tun.read_pkt(buf)) {
-//             m_enc.add_pkt(buf);
-//             buf->reset(m_tun.data_size_max());
-//             m_io.enable_write(m_peer->fd());
-//
-//             if (!m_enc.is_full())
-//                 continue;
-//
-//             m_io.disable_read(fd);
-//             break;
-//         }
     }
 
     void recv_peer(int /*fd*/)
     {
         buf_ptr buf = m_tun.buffer();
 
-        while (m_peer->read_pkt(buf)) {
+        while (m_peer->read_pkt(buf))
+        {
             m_tun.write_pkt(buf);
             buf->reset();
         }
-
-//         buf_ptr buf = m_peer->buffer();
-//
-//         while (m_peer->read_pkt(buf)) {
-//             m_dec.add_pkt(buf);
-//
-//             if (m_dec.is_complete())
-//                 break;
-//
-//             buf->reset();
-//         }
-//
-//         send_tun();
-//
-//         if (!m_dec.is_complete())
-//             return;
-//
-//         m_dec.reset();
     }
-
-//     void send_peer(int fd)
-//     {
-//         if (m_tun_buf)
-//             m_peer->write_pkt(m_tun_buf);
-//
-//         m_tun_buf.reset();
-//         m_io.disable_write(fd);
-//         m_io.enable_read(m_tun.fd());
-
-//         buf_ptr buf;
-//
-//         do {
-//             if (m_enc.is_sent()) {
-//                 m_io.disable_write(fd);
-//                 break;
-//             }
-//
-//             buf = m_peer->buffer();
-//             m_enc.get_pkt(buf);
-//         } while (m_peer->write_pkt(buf));
-//
-//         if (!m_enc.is_complete())
-//             return;
-//
-//         m_enc.reset();
-//         m_io.enable_read(m_tun.fd());
-
-//    }
 
   public:
     handler(const struct args &args)
         : m_tun(tun_stack::interface=args.interface,
                 tun_stack::type=args.type)
-//           m_enc(args.symbols, args.symbol_size),
-//           m_dec(args.symbols, args.symbol_size)
     {
         using std::placeholders::_1;
 
@@ -319,10 +130,8 @@ class handler
         using std::placeholders::_1;
 
         auto rp = std::bind(&handler::recv_peer, this, _1);
-        //auto sp = std::bind(&handler::send_peer, this, _1);
 
         m_io.add_cb(p->fd(), rp, NULL);
-        //m_io.disable_write(p->fd());
 
         m_peer = std::move(p);
     }
