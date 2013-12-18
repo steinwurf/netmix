@@ -60,3 +60,11 @@ bld.program \
     target   = 'udp_tap',
     use      = deps
 )
+
+bld.program \
+(
+    features = 'cxx',
+    source   = bld.path.ant_glob('udp_tap_rlnc.cpp'),
+    target   = 'udp_tap_rlnc',
+    use      = deps
+)

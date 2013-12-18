@@ -14,8 +14,8 @@ CACHE = $(BUILD)/$(shell $(CXX) -dumpmachine)/.cache
 EXMPL = examples
 TARGETS := rlnc_helper rlnc_recoder rlnc_dencoder \
            plain_entry plain_relay plain_client
-EXAMPLES := tcp_client tcp_server udp_client udp_server tcping rlnc_multipath \
-            rlnc_singlepath
+EXAMPLES := rlnc_multipath rlnc_singlepath tcp_client tcp_server tcping \
+            udp_client udp_server udp_tap udp_tap_rlnc
 
 V = 0
 CXX_0 = @echo "$(CXX) $< -o $@"; $(CXX)
