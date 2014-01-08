@@ -848,7 +848,8 @@ public:
         m_dec_factory(args.symbols, args.symbol_size),
         m_enc(m_enc_factory.build()),
         m_dec(m_dec_factory.build()),
-        m_tun(tun_stack::interface=args.interface),
+        m_tun(tun_stack::interface=args.interface,
+              tun_stack::type=args.type),
         m_max(args.symbols * args.overshoot),
         m_send_buf(args.send_buf),
         m_status_interval(args.status_interval)
