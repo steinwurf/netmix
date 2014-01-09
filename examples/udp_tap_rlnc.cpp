@@ -1,6 +1,7 @@
 #include <iostream>
 #include <getopt.h>
 #include <cstring>
+#include <ctime>
 #include <vector>
 #include <memory>
 #include <functional>
@@ -43,6 +44,9 @@ struct args
     /* start as server if argument is given, client otherwise */
     bool server = false;
 
+    /* do not print debug messages per default */
+    bool verbose = false;
+
     /* size of udp socket buffer for sending */
     size_t send_buf = 16384;
 
@@ -50,7 +54,7 @@ struct args
     size_t status_interval = 8;
 
     /* ratio of extra packets distributed on a connection */
-    double overshoot = 1.2;
+    double overshoot = 1.5;
 };
 
 struct option options[] =
@@ -65,6 +69,7 @@ struct option options[] =
     {"status_interval", required_argument, NULL, 8},
     {"overshoot",       required_argument, NULL, 9},
     {"type",            required_argument, NULL, 10},
+    {"verbose",         no_argument,       NULL, 11},
     {0}
 };
 
@@ -73,17 +78,15 @@ typedef tuntap<
         final_layer
         >> tun_stack;
 
-typedef counters<
-        udp_sock_client<
+typedef udp_sock_client<
         buffer_pool<buffer_pkt,
         final_layer
-        >>> client_stack;
+        >> client_stack;
 
-typedef counters<
-        udp_sock_server<
+typedef udp_sock_server<
         buffer_pool<buffer_pkt,
         final_layer
-        >>> server_stack;
+        >> server_stack;
 
 // typedef fifi::binary field;
 // typedef kodo::on_the_fly_encoder<field> kodo_encoder;
@@ -392,12 +395,12 @@ private:
         uint8_t block;
     } __attribute__((packed));
 
-    struct status_hdr
-    {
-        struct rlnc_hdr rlnc;
-        uint16_t interval;
-        uint16_t status[0];
-    } __attribute__((packed));
+//     struct status_hdr
+//     {
+//         struct rlnc_hdr rlnc;
+//         uint16_t interval;
+//         uint16_t status[0];
+//     } __attribute__((packed));
 
     struct len_hdr
     {
@@ -406,7 +409,7 @@ private:
 
     constexpr static size_t m_rlnc_hdr_size = sizeof(struct rlnc_hdr);
     constexpr static size_t m_len_hdr_size = sizeof(struct len_hdr);
-    size_t m_status_hdr_size = sizeof(struct status_hdr);
+    //size_t m_status_hdr_size = sizeof(struct status_hdr);
 
     //std::vector<peer_ptr> m_peers;
     peer_ptr m_peer;
@@ -426,6 +429,8 @@ private:
     size_t m_enc_block = 0;
     size_t m_dec_block = 0;
     size_t m_max;
+    double m_overshoot;
+    bool   m_verbose;
     size_t m_send_buf;
     size_t m_status_interval;
 
@@ -434,10 +439,10 @@ private:
         return reinterpret_cast<struct rlnc_hdr *>(ptr);
     }
 
-    static struct status_hdr *status_hdr(uint8_t *ptr)
-    {
-        return reinterpret_cast<struct status_hdr *>(ptr);
-    }
+//     static struct status_hdr *status_hdr(uint8_t *ptr)
+//     {
+//         return reinterpret_cast<struct status_hdr *>(ptr);
+//     }
 
     static struct len_hdr *len_hdr(uint8_t *ptr)
     {
@@ -454,15 +459,15 @@ private:
         return rlnc_hdr(ptr)->block;
     }
 
-    static size_t status_hdr_interval(buf_ptr &buf)
-    {
-        return be16toh(status_hdr(buf->head())->interval);
-    }
-
-    static uint16_t *status_hdr_status(buf_ptr &buf)
-    {
-        return status_hdr(buf->head())->status;
-    }
+//     static size_t status_hdr_interval(buf_ptr &buf)
+//     {
+//         return be16toh(status_hdr(buf->head())->interval);
+//     }
+//
+//     static uint16_t *status_hdr_status(buf_ptr &buf)
+//     {
+//         return status_hdr(buf->head())->status;
+//     }
 
     static size_t len_hdr_length(buf_ptr &buf)
     {
@@ -478,15 +483,15 @@ private:
         hdr->block = m_enc_block;
     }
 
-    void status_hdr_add(buf_ptr &buf, uint16_t *status)
-    {
-        auto hdr = status_hdr(buf->head_push(m_status_hdr_size));
-
-        hdr->rlnc.type = rlnc_type::rlnc_status;
-        hdr->rlnc.block = m_dec_block;
-        hdr->interval = htobe16(m_status_interval);
-        memcpy(hdr->status, status, m_peers_count*2);
-    }
+//     void status_hdr_add(buf_ptr &buf, uint16_t *status)
+//     {
+//         auto hdr = status_hdr(buf->head_push(m_status_hdr_size));
+//
+//         hdr->rlnc.type = rlnc_type::rlnc_status;
+//         hdr->rlnc.block = m_dec_block;
+//         hdr->interval = htobe16(m_status_interval);
+//         memcpy(hdr->status, status, m_peers_count*2);
+//     }
 
     void len_hdr_add(buf_ptr &buf)
     {
@@ -495,7 +500,7 @@ private:
         hdr->length = htobe32(len);
     }
 
-    void put_plain_data(buf_ptr &buf)
+    void add_raw_packet(buf_ptr &buf)
     {
         len_hdr_add(buf);
         sak::const_storage symbol(buf->head(), buf->len());
@@ -510,87 +515,6 @@ private:
         assert(len > m_enc->symbol_size());
         assert(buf->len() == len + m_rlnc_hdr_size);
     }
-
-//     void peers_enable_read()
-//     {
-//         for (auto &p : m_peers)
-//             if (p)
-//                 m_io.enable_read(p->fd());
-//     }
-
-//     void peers_enable_write()
-//     {
-//         int fd = -1;
-//         size_t ratio = m_max;
-//
-//         for (auto &p : m_peers)
-//         {
-//             if (!p)
-//                 continue;
-//
-//             if (p->ratio_spend())
-//                 continue;
-//
-//             if (p->ratio_packets > ratio)
-//                 continue;
-//
-//             ratio = p->ratio_packets;
-//             fd = p->fd();
-//         }
-//
-//         assert(fd >= 0);
-//         m_io.enable_write(fd);
-//     }
-
-//     void peers_enable_write_next(int current_fd, bool consider_ratio)
-//     {
-//         int fd = -1;
-//         size_t ratio = m_max;
-//
-//         for (auto &p : m_peers)
-//         {
-//             if (!p)
-//                 continue;
-//
-//             if (p->fd() == current_fd)
-//                 continue;
-//
-//             if (p->ratio_packets > ratio)
-//                 continue;
-//
-//             if (consider_ratio && p->ratio_spend())
-//                 continue;
-//
-//             ratio = p->ratio_packets;
-//             fd = p->fd();
-//         }
-//
-//         assert(fd >= 0);
-//
-//         if (!consider_ratio)
-//             m_peers[fd]->set_max_ratio();
-//
-//         m_io.enable_write(fd);
-//     }
-
-//     void peers_disable_write()
-//     {
-//         for (auto &p : m_peers)
-//             if (p)
-//                 m_io.disable_write(p->fd());
-//     }
-
-//     void peers_initialize()
-//     {
-//         for (auto &p : m_peers)
-//         {
-//             if (!p)
-//                 continue;
-//
-//             m_io.disable_write(p->fd());
-//             p->sent_packets = 0;
-//         }
-//     }
 
     int validate_block(buf_ptr &buf, size_t block)
     {
@@ -686,7 +610,7 @@ private:
 
         if (buf_in->data_len() < m_dec->symbol_size())
         {
-            std::cout << "invalid length, data: " << buf_in->data_len()
+            std::cerr << "invalid length, data: " << buf_in->data_len()
                       << ", head: " << buf_in->head_len() << std::endl;
         }
         assert(buf_in->data_len() > m_dec->symbol_size());
@@ -701,7 +625,7 @@ private:
         }
         else
         {
-            m_peer->received_packets++;
+            //m_peer->received_packets++;
             m_encoded_received++;
         }
 
@@ -722,8 +646,9 @@ private:
         if (!m_dec->is_complete())
             return true;
 
-        std::cout << "decoded block " << m_dec_block << " (linear: "
-                  << m_linear << ")" << std::endl;
+        if (m_verbose)
+            std::cout << "decoded block " << m_dec_block
+                      << " (linear: " << m_linear << ")" << std::endl;
         m_dec->initialize(m_dec_factory);
         m_dec_block++;
         m_decoded = 0;
@@ -745,13 +670,16 @@ private:
 
         while (m_tun.read_pkt(buf))
         {
-            put_plain_data(buf);
+            // Store the packet in the encoder (with a length header)
+            add_raw_packet(buf);
             buf->reset(m_tun.data_size_max());
             m_io.enable_write(m_peer->fd());
 
+            // Fill up the encoder as much as possible
             if (m_enc->rank() < m_enc->symbols())
                 continue;
 
+            // Disable further reads if the encoder is full
             m_io.disable_read(fd);
             break;
         }
@@ -791,7 +719,9 @@ private:
         size_t symbols = m_enc->symbols();
         size_t symbols_added = m_enc->symbols_initialized();
 
-        if (symbols_added < symbols && m_encoded_sent >= symbols_added)
+        // Send repair packets in the middle of a generation
+        double current_limit = symbols_added * m_overshoot;
+        if (symbols_added < symbols && m_encoded_sent > current_limit)
         {
             m_io.disable_write(fd);
             return false;
@@ -800,24 +730,14 @@ private:
         if (m_encoded_sent >= m_max)
             return false;
 
-//         if (m_peer->ratio_spend())
-//         {
-//             m_io.disable_write(fd);
-//             peers_enable_write_next(fd, true);
-//             return false;
-//         }
-
         buf = m_peer->buffer();
         get_enc_data(buf);
 
         if (!m_peer->write_pkt(buf))
-        {
-            //peers_enable_write_next(fd, false);
             return false;
-        }
 
         m_encoded_sent++;
-        m_peer->sent_packets++;
+        //m_peer->sent_packets++;
 
         return true;
     }
@@ -827,22 +747,20 @@ private:
         while (send_enc_packet(fd))
         { }
 
-        if (m_encoded_sent < m_enc->symbols())
-            return;
+        if (m_encoded_sent >= m_max)
+        {
+            if (m_verbose)
+                std::cout << "sent block " << m_enc_block << ", "
+                          << m_encoded_sent << std::endl;
 
-//         if (m_peers[fd]->is_alone())
-//             return;
+            m_enc->initialize(m_enc_factory);
+            m_enc_block++;
+            m_io.enable_read(m_tun.fd());
 
-        std::cout << "sent block " << m_enc_block << ", "
-                  << m_peer->sent_packets << std::endl;
-
-        m_enc->initialize(m_enc_factory);
-        m_enc_block++;
-        m_io.enable_read(m_tun.fd());
-
-        m_io.disable_write(m_peer->fd());
-        m_peer->sent_packets = 0;
-        m_encoded_sent = 0;
+            m_io.disable_write(m_peer->fd());
+            //m_peer->sent_packets = 0;
+            m_encoded_sent = 0;
+        }
     }
 
 public:
@@ -853,9 +771,11 @@ public:
         m_dec(m_dec_factory.build()),
         m_tun(tun_stack::interface=args.interface,
               tun_stack::type=args.type),
-        m_max(args.symbols * args.overshoot),
+        m_overshoot(args.overshoot),
+        m_max(args.symbols * (args.overshoot * 1.4)),
         m_send_buf(args.send_buf),
-        m_status_interval(args.status_interval)
+        m_status_interval(args.status_interval),
+        m_verbose(args.verbose)
     {
         using std::placeholders::_1;
 
@@ -878,7 +798,7 @@ public:
         m_io.disable_write(p->fd());
         m_peer = std::move(p);
         m_peers_count++;
-        m_status_hdr_size += 2;
+        //m_status_hdr_size += 2;
     }
 
     void run()
@@ -905,8 +825,6 @@ class client : public coder<client_stack>
         coder(args)
     {
         client_stack *c = new client_stack(
-            client_stack::redundancy=(args.overshoot - 1),
-            client_stack::symbols=args.symbols,
             client_stack::local_address=args.src,
             client_stack::remote_address=args.address,
             client_stack::port=args.port
@@ -923,8 +841,6 @@ class server : public coder<server_stack>
         coder(args)
     {
         server_stack *s = new server_stack(
-            server_stack::redundancy=(args.overshoot - 1),
-            server_stack::symbols=args.symbols,
             server_stack::local_address=args.address,
             server_stack::port=args.port
         );
@@ -972,12 +888,16 @@ int main(int argc, char **argv)
             case 10:
                 strncpy(args.type, optarg, sizeof(args.type));
                 break;
+            case 11:
+                args.verbose = true;
+                break;
             case '?':
                 return 1;
                 break;
         }
     }
 
+    srand(static_cast<uint32_t>(time(0)));
     if (args.server)
     {
         server s(args);
