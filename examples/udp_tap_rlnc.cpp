@@ -35,7 +35,7 @@ struct args
     char *src = NULL;
 
     /* number of symbols in one block */
-    size_t symbols = 16;
+    size_t symbols = 10;
 
     /* size of each symbol in block */
     size_t symbol_size = 1414;
@@ -408,13 +408,14 @@ private:
     constexpr static size_t m_len_hdr_size = sizeof(struct len_hdr);
     size_t m_status_hdr_size = sizeof(struct status_hdr);
 
-    std::vector<peer_ptr> m_peers;
+    //std::vector<peer_ptr> m_peers;
+    peer_ptr m_peer;
     encoder::factory m_enc_factory;
     decoder::factory m_dec_factory;
     encoder::pointer m_enc;
     decoder::pointer m_dec;
     tun_stack m_tun;
-    buf_ptr m_tmp_enc;
+    buf_ptr m_tmp_buf;
     class signal m_sig;
 
     size_t m_peers_count = 0;
@@ -473,7 +474,7 @@ private:
     {
         auto hdr = rlnc_hdr(buf->head_push(m_rlnc_hdr_size));
 
-        hdr->type = rlnc_enc;
+        hdr->type = rlnc_type::rlnc_enc;
         hdr->block = m_enc_block;
     }
 
@@ -481,7 +482,7 @@ private:
     {
         auto hdr = status_hdr(buf->head_push(m_status_hdr_size));
 
-        hdr->rlnc.type = rlnc_status;
+        hdr->rlnc.type = rlnc_type::rlnc_status;
         hdr->rlnc.block = m_dec_block;
         hdr->interval = htobe16(m_status_interval);
         memcpy(hdr->status, status, m_peers_count*2);
@@ -510,86 +511,86 @@ private:
         assert(buf->len() == len + m_rlnc_hdr_size);
     }
 
-    void peers_enable_read()
-    {
-        for (auto &p : m_peers)
-            if (p)
-                m_io.enable_read(p->fd());
-    }
+//     void peers_enable_read()
+//     {
+//         for (auto &p : m_peers)
+//             if (p)
+//                 m_io.enable_read(p->fd());
+//     }
 
-    void peers_enable_write()
-    {
-        int fd = -1;
-        size_t ratio = m_max;
+//     void peers_enable_write()
+//     {
+//         int fd = -1;
+//         size_t ratio = m_max;
+//
+//         for (auto &p : m_peers)
+//         {
+//             if (!p)
+//                 continue;
+//
+//             if (p->ratio_spend())
+//                 continue;
+//
+//             if (p->ratio_packets > ratio)
+//                 continue;
+//
+//             ratio = p->ratio_packets;
+//             fd = p->fd();
+//         }
+//
+//         assert(fd >= 0);
+//         m_io.enable_write(fd);
+//     }
 
-        for (auto &p : m_peers)
-        {
-            if (!p)
-                continue;
+//     void peers_enable_write_next(int current_fd, bool consider_ratio)
+//     {
+//         int fd = -1;
+//         size_t ratio = m_max;
+//
+//         for (auto &p : m_peers)
+//         {
+//             if (!p)
+//                 continue;
+//
+//             if (p->fd() == current_fd)
+//                 continue;
+//
+//             if (p->ratio_packets > ratio)
+//                 continue;
+//
+//             if (consider_ratio && p->ratio_spend())
+//                 continue;
+//
+//             ratio = p->ratio_packets;
+//             fd = p->fd();
+//         }
+//
+//         assert(fd >= 0);
+//
+//         if (!consider_ratio)
+//             m_peers[fd]->set_max_ratio();
+//
+//         m_io.enable_write(fd);
+//     }
 
-            if (p->ratio_spend())
-                continue;
+//     void peers_disable_write()
+//     {
+//         for (auto &p : m_peers)
+//             if (p)
+//                 m_io.disable_write(p->fd());
+//     }
 
-            if (p->ratio_packets > ratio)
-                continue;
-
-            ratio = p->ratio_packets;
-            fd = p->fd();
-        }
-
-        assert(fd >= 0);
-        m_io.enable_write(fd);
-    }
-
-    void peers_enable_write_next(int current_fd, bool consider_ratio)
-    {
-        int fd = -1;
-        size_t ratio = m_max;
-
-        for (auto &p : m_peers)
-        {
-            if (!p)
-                continue;
-
-            if (p->fd() == current_fd)
-                continue;
-
-            if (p->ratio_packets > ratio)
-                continue;
-
-            if (consider_ratio && p->ratio_spend())
-                continue;
-
-            ratio = p->ratio_packets;
-            fd = p->fd();
-        }
-
-        assert(fd >= 0);
-
-        if (!consider_ratio)
-            m_peers[fd]->set_max_ratio();
-
-        m_io.enable_write(fd);
-    }
-
-    void peers_disable_write()
-    {
-        for (auto &p : m_peers)
-            if (p)
-                m_io.disable_write(p->fd());
-    }
-
-    void peers_initialize()
-    {
-        for (auto &p : m_peers)
-        {
-            if (!p)
-                continue;
-
-            m_io.disable_write(p->fd());
-            p->sent_packets = 0;
-        }
-    }
+//     void peers_initialize()
+//     {
+//         for (auto &p : m_peers)
+//         {
+//             if (!p)
+//                 continue;
+//
+//             m_io.disable_write(p->fd());
+//             p->sent_packets = 0;
+//         }
+//     }
 
     int validate_block(buf_ptr &buf, size_t block)
     {
@@ -605,62 +606,62 @@ private:
         throw std::runtime_error("off block");
     }
 
-    void rlnc_status_process(buf_ptr &buf)
-    {
-        size_t i = 0;
-        size_t count;
-        uint16_t *counts = status_hdr_status(buf);
-        size_t interval = status_hdr_interval(buf);
-        size_t sum = 0;
-
-        m_max = 0;
-
-        for (auto &p : m_peers)
-        {
-            if (!p)
-                continue;
-
-            count = be16toh(counts[i++]);
-            sum += count;
-            m_max += p->set_ratio(count, interval);
-        }
-
-        peers_enable_write();
-
-        assert(sum == interval);
-        assert(sum == m_status_interval);
-    }
-
-    void rlnc_status_send()
-    {
-        buf_ptr buf;
-        std::vector<uint16_t> counts;
-        size_t max = 0;
-        int best_fd = 0;
-
-        if (m_encoded_received < m_status_interval)
-            return;
-
-        for (auto &p : m_peers)
-        {
-            if (!p)
-                continue;
-
-            if (p->received_packets > max)
-            {
-                best_fd = p->fd();
-                max = p->received_packets;
-            }
-
-            counts.push_back(htobe16(p->received_packets));
-            p->received_packets = 0;
-        }
-
-        buf = m_peers[best_fd]->buffer();
-        status_hdr_add(buf, &counts[0]);
-        m_peers[best_fd]->write_pkt(buf);
-        m_encoded_received = 0;
-    }
+//     void rlnc_status_process(buf_ptr &buf)
+//     {
+//         size_t i = 0;
+//         size_t count;
+//         uint16_t* counts = status_hdr_status(buf);
+//         size_t interval = status_hdr_interval(buf);
+//         size_t sum = 0;
+//
+//         m_max = 0;
+//
+//         for (auto &p : m_peers)
+//         {
+//             if (!p)
+//                 continue;
+//
+//             count = be16toh(counts[i++]);
+//             sum += count;
+//             m_max += p->set_ratio(count, interval);
+//         }
+//
+//         peers_enable_write();
+//
+//         assert(sum == interval);
+//         assert(sum == m_status_interval);
+//     }
+//
+//     void rlnc_status_send()
+//     {
+//         buf_ptr buf;
+//         std::vector<uint16_t> counts;
+//         size_t max = 0;
+//         int best_fd = 0;
+//
+//         if (m_encoded_received < m_status_interval)
+//             return;
+//
+//         for (auto &p : m_peers)
+//         {
+//             if (!p)
+//                 continue;
+//
+//             if (p->received_packets > max)
+//             {
+//                 best_fd = p->fd();
+//                 max = p->received_packets;
+//             }
+//
+//             counts.push_back(htobe16(p->received_packets));
+//             p->received_packets = 0;
+//         }
+//
+//         buf = m_peers[best_fd]->buffer();
+//         status_hdr_add(buf, &counts[0]);
+//         m_peers[best_fd]->write_pkt(buf);
+//         m_encoded_received = 0;
+//     }
 
     bool rlnc_enc_process(buf_ptr &buf_in, int fd)
     {
@@ -674,8 +675,8 @@ private:
 
         if (validate_block(buf_in, m_dec_block) > 0)
         {
-            m_tmp_enc.swap(buf_in);
-            buf_in = m_peers[fd]->buffer();
+            m_tmp_buf.swap(buf_in);
+            buf_in = m_peer->buffer();
             m_io.disable_read(fd);
             return false;
         }
@@ -684,8 +685,10 @@ private:
             return true;
 
         if (buf_in->data_len() < m_dec->symbol_size())
+        {
             std::cout << "invalid length, data: " << buf_in->data_len()
-            << ", head: " << buf_in->head_len() << std::endl;
+                      << ", head: " << buf_in->head_len() << std::endl;
+        }
         assert(buf_in->data_len() > m_dec->symbol_size());
 
         rank = m_dec->rank();
@@ -695,42 +698,43 @@ private:
         if (m_dec->rank() == rank)
         {
             m_linear++;
-        } else
+        }
+        else
         {
-            m_peers[fd]->received_packets++;
+            m_peer->received_packets++;
             m_encoded_received++;
         }
 
         while (m_decoded < m_dec->symbols() &&
-            m_dec->is_symbol_decoded(m_decoded))
+               m_dec->is_symbol_decoded(m_decoded))
         {
-                buf_out->head_push(m_len_hdr_size);
-                memcpy(buf_out->head(), m_dec->symbol(m_decoded++), max_len);
-                len = len_hdr_length(buf_out);
-                buf_out->head_pull(m_len_hdr_size);
-                buf_out->data_put(len);
-                m_tun.write_pkt(buf_out);
-                buf_out->reset();
+            buf_out->head_push(m_len_hdr_size);
+            memcpy(buf_out->head(), m_dec->symbol(m_decoded++), max_len);
+            len = len_hdr_length(buf_out);
+            buf_out->head_pull(m_len_hdr_size);
+            buf_out->data_put(len);
+            m_tun.write_pkt(buf_out);
+            buf_out->reset();
         }
 
-        rlnc_status_send();
+        //rlnc_status_send();
 
         if (!m_dec->is_complete())
             return true;
 
         std::cout << "decoded block " << m_dec_block << " (linear: "
-            << m_linear << ")" << std::endl;
+                  << m_linear << ")" << std::endl;
         m_dec->initialize(m_dec_factory);
         m_dec_block++;
         m_decoded = 0;
         m_linear = 0;
-        peers_enable_read();
+        m_io.enable_read(m_peer->fd());
 
-        if (!m_tmp_enc)
+        if (!m_tmp_buf)
             return false;
 
-        rlnc_enc_process(m_tmp_enc, fd);
-        m_tmp_enc.reset();
+        rlnc_enc_process(m_tmp_buf, fd);
+        m_tmp_buf.reset();
 
         return false;
     }
@@ -743,7 +747,7 @@ private:
         {
             put_plain_data(buf);
             buf->reset(m_tun.data_size_max());
-            peers_enable_write();
+            m_io.enable_write(m_peer->fd());
 
             if (m_enc->rank() < m_enc->symbols())
                 continue;
@@ -755,10 +759,10 @@ private:
 
     void recv_peer(int fd)
     {
-        buf_ptr buf = m_peers[fd]->buffer();
+        buf_ptr buf = m_peer->buffer();
         buf->head_reserve(m_rlnc_hdr_size);
 
-        while (m_peers[fd]->read_pkt(buf))
+        while (m_peer->read_pkt(buf))
         {
             switch (rlnc_hdr_type(buf->head()))
             {
@@ -768,12 +772,12 @@ private:
                 break;
 
             case rlnc_status:
-                rlnc_status_process(buf);
+                //rlnc_status_process(buf);
                 break;
 
             default:
                 std::cerr << "unknown packet type: "
-                    << rlnc_hdr_type(buf->head()) << std::endl;
+                          << rlnc_hdr_type(buf->head()) << std::endl;
             }
 
             buf->reset();
@@ -796,24 +800,24 @@ private:
         if (m_encoded_sent >= m_max)
             return false;
 
-        if (m_peers[fd]->ratio_spend())
-        {
-            m_io.disable_write(fd);
-            peers_enable_write_next(fd, true);
-            return false;
-        }
+//         if (m_peer->ratio_spend())
+//         {
+//             m_io.disable_write(fd);
+//             peers_enable_write_next(fd, true);
+//             return false;
+//         }
 
-        buf = m_peers[fd]->buffer();
+        buf = m_peer->buffer();
         get_enc_data(buf);
 
-        if (!m_peers[fd]->write_pkt(buf))
+        if (!m_peer->write_pkt(buf))
         {
-            peers_enable_write_next(fd, false);
+            //peers_enable_write_next(fd, false);
             return false;
         }
 
         m_encoded_sent++;
-        m_peers[fd]->sent_packets++;
+        m_peer->sent_packets++;
 
         return true;
     }
@@ -821,24 +825,23 @@ private:
     void send_peer(int fd)
     {
         while (send_enc_packet(fd))
-        {
-        }
+        { }
 
         if (m_encoded_sent < m_enc->symbols())
             return;
 
-        if (m_peers[fd]->is_alone())
-            return;
+//         if (m_peers[fd]->is_alone())
+//             return;
 
-        std::cout << "sent block " << m_enc_block << ", ";
-        for (auto &p : m_peers)
-            if (p) std::cout << p->sent_packets << " ";
-        std::cout << std::endl;
+        std::cout << "sent block " << m_enc_block << ", "
+                  << m_peer->sent_packets << std::endl;
 
         m_enc->initialize(m_enc_factory);
         m_enc_block++;
         m_io.enable_read(m_tun.fd());
-        peers_initialize();
+
+        m_io.disable_write(m_peer->fd());
+        m_peer->sent_packets = 0;
         m_encoded_sent = 0;
     }
 
@@ -867,17 +870,13 @@ public:
     {
         using std::placeholders::_1;
 
-        size_t max = p->fd() + 1;
         auto rp = std::bind(&coder::recv_peer, this, _1);
         auto sp = std::bind(&coder::send_peer, this, _1);
-
-        if (m_peers.size() < max)
-            m_peers.resize(max);
 
         p->sock_send_buf(m_send_buf);
         m_io.add_cb(p->fd(), rp, sp);
         m_io.disable_write(p->fd());
-        m_peers[p->fd()] = std::move(p);
+        m_peer = std::move(p);
         m_peers_count++;
         m_status_hdr_size += 2;
     }
