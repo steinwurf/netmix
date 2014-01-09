@@ -392,7 +392,7 @@ private:
     struct rlnc_hdr
     {
         uint8_t type;
-        uint8_t block;
+        uint32_t block;
     } __attribute__((packed));
 
 //     struct status_hdr
@@ -426,17 +426,18 @@ private:
     size_t m_encoded_sent = 0;
     size_t m_encoded_received = 0;
     size_t m_linear = 0;
-    size_t m_enc_block = 0;
-    size_t m_dec_block = 0;
+    uint32_t m_enc_block = 0;
+    uint32_t m_dec_block = 0;
     size_t m_max;
     double m_overshoot;
-    bool   m_verbose;
     size_t m_send_buf;
     size_t m_status_interval;
 
-    static struct rlnc_hdr *rlnc_hdr(uint8_t *ptr)
+    bool   m_verbose;
+
+    static rlnc_hdr* rlnc_hdr(uint8_t* ptr)
     {
-        return reinterpret_cast<struct rlnc_hdr *>(ptr);
+        return reinterpret_cast<struct rlnc_hdr*>(ptr);
     }
 
 //     static struct status_hdr *status_hdr(uint8_t *ptr)
@@ -444,17 +445,17 @@ private:
 //         return reinterpret_cast<struct status_hdr *>(ptr);
 //     }
 
-    static struct len_hdr *len_hdr(uint8_t *ptr)
+    static len_hdr* len_hdr(uint8_t* ptr)
     {
-        return reinterpret_cast<struct len_hdr *>(ptr);
+        return reinterpret_cast<struct len_hdr*>(ptr);
     }
 
-    static size_t rlnc_hdr_type(uint8_t *ptr)
+    static uint8_t rlnc_hdr_type(uint8_t* ptr)
     {
         return rlnc_hdr(ptr)->type;
     }
 
-    static size_t rlnc_hdr_block(uint8_t *ptr)
+    static uint32_t rlnc_hdr_block(uint8_t* ptr)
     {
         return rlnc_hdr(ptr)->block;
     }
@@ -587,22 +588,34 @@ private:
 //         m_encoded_received = 0;
 //     }
 
-    bool rlnc_enc_process(buf_ptr &buf_in, int fd)
+    void increment_dec_block()
+    {
+        m_dec->initialize(m_dec_factory);
+        m_dec_block++;
+        m_decoded = 0;
+        m_linear = 0;
+    }
+
+    bool rlnc_enc_process(buf_ptr &buf_in)
     {
         size_t max_len = m_dec->symbol_size();
         buf_ptr buf_out = m_tun.buffer(max_len);
         size_t len;
         size_t rank;
 
-        if (validate_block(buf_in, m_dec_block) < 0)
-            return true;
-
-        if (validate_block(buf_in, m_dec_block) > 0)
+        // Ignore old blocks
+        if (rlnc_hdr_block(buf_in->head()) < m_dec_block)
         {
-            m_tmp_buf.swap(buf_in);
-            buf_in = m_peer->buffer();
-            m_io.disable_read(fd);
-            return false;
+            return true;
+        }
+
+        // We failed to decode a block
+        if (rlnc_hdr_block(buf_in->head()) > m_dec_block)
+        {
+            if (m_verbose)
+                std::cout << "FAILED DECODING: " << m_dec_block
+                          << " (rank: " << m_dec->rank() << ")" << std::endl;
+            increment_dec_block();
         }
 
         if (m_dec->is_complete())
@@ -649,17 +662,7 @@ private:
         if (m_verbose)
             std::cout << "decoded block " << m_dec_block
                       << " (linear: " << m_linear << ")" << std::endl;
-        m_dec->initialize(m_dec_factory);
-        m_dec_block++;
-        m_decoded = 0;
-        m_linear = 0;
-        m_io.enable_read(m_peer->fd());
-
-        if (!m_tmp_buf)
-            return false;
-
-        rlnc_enc_process(m_tmp_buf, fd);
-        m_tmp_buf.reset();
+        increment_dec_block();
 
         return false;
     }
@@ -685,7 +688,7 @@ private:
         }
     }
 
-    void recv_peer(int fd)
+    void recv_peer(int /*fd*/)
     {
         buf_ptr buf = m_peer->buffer();
         buf->head_reserve(m_rlnc_hdr_size);
@@ -695,8 +698,7 @@ private:
             switch (rlnc_hdr_type(buf->head()))
             {
             case rlnc_enc:
-                if (!rlnc_enc_process(buf, fd))
-                    return;
+                rlnc_enc_process(buf);
                 break;
 
             case rlnc_status:
@@ -744,6 +746,7 @@ private:
 
     void send_peer(int fd)
     {
+        // Can send multiple packets (if overshooting is enabled)
         while (send_enc_packet(fd))
         { }
 
@@ -771,8 +774,8 @@ public:
         m_dec(m_dec_factory.build()),
         m_tun(tun_stack::interface=args.interface,
               tun_stack::type=args.type),
-        m_overshoot(args.overshoot),
         m_max(args.symbols * (args.overshoot * 1.4)),
+        m_overshoot(args.overshoot),
         m_send_buf(args.send_buf),
         m_status_interval(args.status_interval),
         m_verbose(args.verbose)
