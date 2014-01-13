@@ -81,7 +81,9 @@ class rlnc_data_hlp : public super, public rlnc_data_base<recoder>
     rlnc_data_hlp(const Args&... args)
         : super(args...),
           base(super::rlnc_symbols(), super::rlnc_symbol_size())
-    {}
+    {
+        base::m_coder->set_systematic_off();
+    }
 
     bool write_pkt(buf_ptr &buf_in)
     {
