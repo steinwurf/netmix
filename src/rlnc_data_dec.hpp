@@ -109,22 +109,15 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
 
     void process_rank()
     {
-        if (m_linear < 1) {
-            std::cout << "not linear" << std::endl;
+        if (m_linear < 1)
             return;
-        }
 
-        if (!is_partial_done()) {
-            std::cout << "not done" << std::endl;
+        if (!is_partial_done())
             return;
-        }
 
-        if (is_complete()) {
-            std::cout << "not incomplete" << std::endl;
+        if (is_complete())
             return;
-        }
 
-        std::cout << "dec ack rank " << base::m_coder->rank() << std::endl;
         send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
     }
 

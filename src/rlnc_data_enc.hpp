@@ -59,8 +59,6 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
 
         base::put_status(buf->data(), &m_decoder_rank);
 
-        std::cout << "enc ack rank " << m_decoder_rank << std::endl;
-
         if (m_decoder_rank < super::rlnc_symbols())
             return;
 
