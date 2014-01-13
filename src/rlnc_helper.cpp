@@ -56,7 +56,7 @@ static struct option options[] = {
 };
 
 typedef eth_filter_hlp<
-        rlnc_data_hlp<kodo::sliding_window_decoder<fifi::binary8>,
+        rlnc_data_hlp<kodo::sliding_window_decoder<fifi::binary>,
         rlnc_hdr<
         helper_budgets<
         eth_hdr<

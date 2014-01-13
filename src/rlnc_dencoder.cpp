@@ -81,7 +81,7 @@ typedef tcp_hdr<
 
 typedef eth_filter_enc<
         len_hdr<
-        rlnc_data_enc<kodo::sliding_window_encoder<fifi::binary8>,
+        rlnc_data_enc<kodo::sliding_window_encoder<fifi::binary>,
         rlnc_hdr<
         source_budgets<
         eth_hdr<
@@ -95,7 +95,7 @@ typedef eth_filter_enc<
 
 typedef eth_filter_dec<
         len_hdr<
-        rlnc_data_dec<kodo::sliding_window_decoder<fifi::binary8>,
+        rlnc_data_dec<kodo::sliding_window_decoder<fifi::binary>,
         rlnc_hdr<
         eth_hdr<
         loss_dec<
@@ -159,9 +159,7 @@ class rlnc_dencoder : public signal, public io
         buffer_pkt::pointer buf = m_dec.buffer();
 
         while (m_dec.read_pkt(buf)) {
-            std::cout << "write decoded (" << buf->len() << ")" << std::endl;
             if (!m_client.write_pkt(buf)) {
-                std::cout << "break" << std::endl;
                 break;
             }
             buf->reset();

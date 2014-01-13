@@ -74,7 +74,7 @@ struct option options[] = {
 };
 
 typedef eth_filter_rec<
-        rlnc_data_rec<kodo::sliding_window_decoder<fifi::binary8>,
+        rlnc_data_rec<kodo::sliding_window_decoder<fifi::binary>,
         rlnc_hdr<
         relay_budgets<
         eth_hdr<
