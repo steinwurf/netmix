@@ -90,7 +90,8 @@ class plain_hdr : public super
         m_pkts_send = be64toh(req->received);
 
         /* fast forward to last seen */
-        while (m_buf_sent.size() > m_seq_sent - be16toh(hdr->seq))
+        while (m_buf_sent.size() >
+               static_cast<size_t>(m_seq_sent - be16toh(hdr->seq)))
             m_buf_sent.pop_front();
 
         resend_packets();
