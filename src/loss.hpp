@@ -2,6 +2,7 @@
 
 #include <random>
 #include <vector>
+#include <ctime>
 
 #include "kwargs.hpp"
 
@@ -31,6 +32,7 @@ class loss :
     template<typename... Args> explicit
     loss(const Args&... args)
         : super(args...),
+          m_generator(time(0)),
           m_dist(kwget(loss_prob, .5, args...))
     {}
 
@@ -56,6 +58,7 @@ class loss_base
 
   protected:
     loss_base(std::vector<double> &errors)
+        : m_generator(time(0))
     {
         for (auto e : errors)
             m_dists.push_back(distribution(e));
