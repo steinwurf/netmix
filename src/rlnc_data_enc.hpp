@@ -1,6 +1,7 @@
 #pragma once
 
 #include "rlnc_data_base.hpp"
+#include "stat_counter.hpp"
 
 template<class enc, class super>
 class rlnc_data_enc : public super, public rlnc_data_base<enc>
@@ -8,12 +9,21 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
     typedef rlnc_data_base<enc> base;
     typedef typename super::buffer_ptr buf_ptr;
 
+    stat_counter m_pkt_count = {"enc packets"};
+    stat_counter m_block_count = {"enc blocks"};
+    stat_counter m_ack_count = {"enc ack"};
+    stat_counter m_late_count = {"enc late"};
+    stat_counter m_timeout_count = {"enc timeouts"};
+
     size_t m_decoder_rank = 0;
     bool m_stopped = false;
 
     bool validate_block(size_t block)
     {
         size_t diff = super::rlnc_hdr_block_diff(block);
+
+        if (diff)
+            ++m_late_count;
 
         if (diff > 8)
             return false;
@@ -30,6 +40,7 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         len = base::m_coder->encode(buf->data_put(max_len));
         buf->data_trim(len);
         super::rlnc_hdr_add_enc(buf);
+        ++m_pkt_count;
     }
 
     void put_pkt(buf_ptr &buf)
@@ -48,6 +59,7 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         m_decoder_rank = 0;
         base::increment();
         super::increment();
+        ++m_block_count;
     }
 
     void process_ack(buf_ptr &buf)
@@ -57,12 +69,12 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         if (!validate_block(block))
             return;
 
+        ++m_ack_count;
         base::put_status(buf->data(), &m_decoder_rank);
 
         if (m_decoder_rank < super::rlnc_symbols())
             return;
 
-        std::cout << "enc ack block " << block << std::endl;
         increment();
     }
 
@@ -138,6 +150,7 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         if (m_stopped)
             return;
 
+        ++m_timeout_count;
         super::increase_budget();
         buf = super::buffer();
 

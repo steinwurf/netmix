@@ -17,6 +17,7 @@
 #include "buffer_pool.hpp"
 #include "final_layer.hpp"
 #include "io.hpp"
+#include "stat_counter.hpp"
 
 struct args {
     /* first interface to use */
@@ -184,6 +185,8 @@ int main(int argc, char **argv)
 
     rlnc_helper h(args);
     h.run();
+
+    std::cout << stat_counter::all;
 
     return EXIT_SUCCESS;
 }

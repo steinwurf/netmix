@@ -22,6 +22,7 @@
 #include "buffer_pool.hpp"
 #include "final_layer.hpp"
 #include "io.hpp"
+#include "stat_counter.hpp"
 
 struct args
 {
@@ -288,6 +289,8 @@ int main(int argc, char **argv)
     } catch (const std::runtime_error &re) {
         std::cout << re.what() << std::endl;
     }
+
+    std::cout << stat_counter::all;
 
     return EXIT_SUCCESS;
 }
