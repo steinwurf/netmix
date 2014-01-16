@@ -57,19 +57,19 @@ class budgets
         return 1/(1 - errors[e1]);
     }
 
-    static inline double source_credits(size_t g, errors_type &errors)
+    static inline double source_credits(size_t g, errors_type &errors, double overshoot)
     {
-        return 1/(1 - errors[e3]*errors[e1]);
+        return overshoot/(1 - errors[e3]*errors[e1]);
     }
 
-    static inline double source_budget(size_t g, errors_type &errors)
+    static inline double source_budget(size_t g, errors_type &errors, double overshoot)
     {
         double nom, denom, r = r_val(g, errors);
 
         nom = g + r - r*errors[e2];
         denom = 2 - errors[e3] - errors[e2];
 
-        return nom/denom;
+        return overshoot*nom/denom;
     }
 
     static inline double relay_credits(size_t g, errors_type &errors)
@@ -78,9 +78,9 @@ class budgets
         return 1/(1 - errors[e3]*errors[e1]);
     }
 
-    static inline double relay_budget(size_t g, errors_type &errors)
+    static inline double relay_budget(size_t g, errors_type &errors, double overshoot)
     {
-        return source_budget(g, errors) - g*(1 - errors[e4]);
+        return source_budget(g, errors, overshoot) - g*(1 - errors[e4]);
     }
 };
 
@@ -114,6 +114,11 @@ class budgets_base : public budgets<errors_type>
     {
         return m_budget;
     }
+
+    double budget_max()
+    {
+        return m_max;
+    }
 };
 
 template<class super>
@@ -127,14 +132,25 @@ class source_budgets : public super, public budgets_base<typename super::errors_
         : super(args...)
     {
         base::m_credits = base::source_credits(super::rlnc_symbols(),
-                                               super::errors_info());
+                                               super::errors_info(),
+                                               super::overshoot_ratio());
         base::m_max = base::source_budget(super::rlnc_symbols(),
-                                          super::errors_info());
+                                          super::errors_info(),
+                                          super::overshoot_ratio());
+
+        std::cout << "enc budget: " << base::m_max << std::endl;
+        std::cout << "enc credit: " << base::m_credits << std::endl;
     }
 
-    void increment(size_t b = 0)
+    void increment()
     {
         super::increment();
+        base::m_budget = 0;
+    }
+
+    void increment(size_t b)
+    {
+        super::increment(b);
         base::m_budget = 0;
     }
 };
@@ -155,11 +171,21 @@ class helper_budgets : public super, public budgets_base<typename super::errors_
                                           super::errors_info());
         base::m_threshold = base::helper_threshold(super::rlnc_symbols(),
                                                    super::errors_info());
+
+        std::cout << "hlp budget: " << base::m_max << std::endl;
+        std::cout << "hlp credit: " << base::m_credits << std::endl;
+        std::cout << "hlp threshold: " << base::m_threshold << std::endl;
     }
 
-    void increment(size_t b = 0)
+    void increment()
     {
         super::increment();
+        base::m_budget = 0;
+    }
+
+    void increment(size_t b)
+    {
+        super::increment(b);
         base::m_budget = 0;
     }
 };
@@ -177,12 +203,22 @@ class relay_budgets : public super, public budgets_base<typename super::errors_t
         base::m_credits = base::relay_credits(super::rlnc_symbols(),
                                               super::errors_info());
         base::m_max = base::relay_budget(super::rlnc_symbols(),
-                                         super::errors_info());
+                                         super::errors_info(),
+                                         super::overshoot_ratio());
+
+        std::cout << "rec budget: " << base::m_max << std::endl;
+        std::cout << "rec credit: " << base::m_credits << std::endl;
     }
 
-    void increment(size_t b = 0)
+    void increment()
     {
         super::increment();
+        base::m_budget = 0;
+    }
+
+    void increment(size_t b)
+    {
+        super::increment(b);
         base::m_budget = 0;
     }
 };

@@ -52,6 +52,9 @@ struct args {
 
     /* synthetic error probabilities */
     std::vector<double> errors = {0.1, 0.1, 0.5, 0.75};
+
+    /* ratio to multiply source budget with */
+    double overshoot            = 1.05;
 };
 
 struct option options[] = {
@@ -70,6 +73,7 @@ struct option options[] = {
     {"e3",          required_argument, NULL, 13},
     {"e4",          required_argument, NULL, 14},
     {"timeout",     required_argument, NULL, 15},
+    {"overshoot",   required_argument, NULL, 16},
     {0}
 };
 
@@ -131,7 +135,8 @@ class rlnc_recoder : public signal, public io
               rec_stack::two_hop=args.a.two_hop,
               rec_stack::symbols=args.symbols,
               rec_stack::symbol_size=args.symbol_size,
-              rec_stack::errors=args.errors
+              rec_stack::errors=args.errors,
+              rec_stack::overshoot=args.overshoot
              ),
           m_b(
               rec_stack::interface=args.b.interface,
@@ -140,7 +145,8 @@ class rlnc_recoder : public signal, public io
               rec_stack::two_hop=args.b.two_hop,
               rec_stack::symbols=args.symbols,
               rec_stack::symbol_size=args.symbol_size,
-              rec_stack::errors=args.errors
+              rec_stack::errors=args.errors,
+              rec_stack::overshoot=args.overshoot
              )
     {
         using std::placeholders::_1;
@@ -222,6 +228,9 @@ int main(int argc, char **argv)
                 break;
             case 15:
                 args.timeout = atoi(optarg);
+                break;
+            case 16:
+                args.overshoot = strtod(optarg, NULL);
                 break;
             default:
                 return EXIT_FAILURE;

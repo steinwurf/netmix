@@ -54,6 +54,9 @@ struct args
 
     /* milliseconds to wait for ACK */
     ssize_t timeout             = 20;
+
+    /* ratio to multiply source budget with */
+    double overshoot            = 1.05;
 };
 
 static struct option options[] = {
@@ -70,6 +73,7 @@ static struct option options[] = {
     {"e3",          required_argument, NULL, 11},
     {"e4",          required_argument, NULL, 12},
     {"timeout",     required_argument, NULL, 13},
+    {"overshoot",   required_argument, NULL, 14},
     {0}
 };
 
@@ -180,7 +184,8 @@ class rlnc_dencoder : public signal, public io
                 enc_stack::two_hop=args.two_hop,
                 enc_stack::symbols=args.symbols,
                 enc_stack::symbol_size=args.symbol_size,
-                enc_stack::errors=args.errors
+                enc_stack::errors=args.errors,
+                enc_stack::overshoot=args.overshoot
           ),
           m_dec(
                 dec_stack::interface=args.interface,
@@ -268,13 +273,21 @@ int main(int argc, char **argv)
             case 13:
                 args.timeout = atoi(optarg);
                 break;
+            case 14:
+                args.overshoot = strtod(optarg, NULL);
+                break;
             case '?':
                 return EXIT_FAILURE;
         }
     }
 
     rlnc_dencoder de(args);
-    de.run();
+
+    try {
+        de.run();
+    } catch (const std::runtime_error &re) {
+        std::cout << re.what() << std::endl;
+    }
 
     return EXIT_SUCCESS;
 }
