@@ -82,7 +82,7 @@ class sock
             return true;
         }
 
-        if (res < 0 && errno == EAGAIN)
+        if (res < 0 && (errno == EAGAIN || errno == ENOBUFS))
             return false;
 
         throw std::system_error(errno, std::system_category(),
