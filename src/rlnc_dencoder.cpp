@@ -121,22 +121,24 @@ class rlnc_dencoder : public signal, public io
 
     void read_client(int)
     {
-        bool res;
         buffer_pkt::pointer buf = m_client.buffer();
 
         while (true) {
-            res = m_client.read_pkt(buf);
-
-            if (!res)
-                break;
-
-            m_enc.write_pkt(buf);
-            buf->reset();
-
             if (m_enc.is_full()) {
                 io::disable_read(m_client.fd());
                 break;
             }
+
+            if (!m_client.read_pkt(buf))
+                break;
+
+            if (!m_enc.write_pkt(buf)) {
+                io::enable_write(m_enc.fd());
+                io::disable_read(m_client.fd());
+                break;
+            }
+
+            buf->reset();
         }
     }
 
@@ -157,6 +159,12 @@ class rlnc_dencoder : public signal, public io
 
             buf->reset();
         }
+    }
+
+    void write_enc(int)
+    {
+        io::disable_write(m_enc.fd());
+        io::enable_read(m_client.fd());
     }
 
     void read_dec(int)
@@ -202,11 +210,14 @@ class rlnc_dencoder : public signal, public io
 
         auto rc = std::bind(&rlnc_dencoder::read_client, this, _1);
         auto re = std::bind(&rlnc_dencoder::read_enc, this, _1);
+        auto we = std::bind(&rlnc_dencoder::write_enc, this, _1);
         auto rd = std::bind(&rlnc_dencoder::read_dec, this, _1);
 
         io::add_cb(m_client.fd(), rc, NULL);
-        io::add_cb(m_enc.fd(), re, NULL);
+        io::add_cb(m_enc.fd(), re, we);
         io::add_cb(m_dec.fd(), rd, NULL);
+
+        io::disable_write(m_enc.fd());
     }
 
     void run()
