@@ -23,6 +23,10 @@ class signal
         if (sigaction(SIGINT, &act, 0))
             throw std::system_error(errno, std::system_category(),
                                     "unable to install signal");
+
+        if (sigaction(SIGUSR1, &act, 0))
+            throw std::system_error(errno, std::system_category(),
+                                    "unable to install signal");
     }
 
     static void handler(int sig)
