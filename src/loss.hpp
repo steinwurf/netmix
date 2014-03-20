@@ -5,6 +5,7 @@
 #include <ctime>
 
 #include "kwargs.hpp"
+#include "stat_counter.hpp"
 
 struct loss_args
 {
@@ -82,6 +83,11 @@ class loss_dec : public super, public loss_base
         e4
     };
 
+    stat_counter m_e2_lost{"e2 lost"};
+    stat_counter m_e3_lost{"e3 lost"};
+    stat_counter m_e4_lost{"e4 lost"};
+    stat_counter m_not_lost{"not lost"};
+
   protected:
     template<typename... Args> explicit
     loss_dec(const Args&... args)
@@ -94,13 +100,18 @@ class loss_dec : public super, public loss_base
         if (!super::read_pkt(buf))
             return false;
 
-        if (super::is_helper(buf) && is_lost(e2))
+        if (super::is_helper(buf) && is_lost(e2)) {
+            ++m_e2_lost;
             return false;
-        else if (super::is_neighbor(buf) && is_lost(e3))
+        } else if (super::is_neighbor(buf) && is_lost(e3)) {
+            ++m_e3_lost;
             return false;
-        else if (super::is_two_hop(buf) && is_lost(e4))
+        } else if (super::is_two_hop(buf) && is_lost(e4)) {
+            ++m_e4_lost;
             return false;
+        }
 
+        ++m_not_lost;
         return true;
     }
 };
