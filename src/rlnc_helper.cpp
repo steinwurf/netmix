@@ -104,7 +104,8 @@ class rlnc_helper : public signal, public io
               hlp_stack::destination=args.a_neighbor,
               hlp_stack::symbols=args.symbols,
               hlp_stack::symbol_size=args.symbol_size,
-              hlp_stack::errors=args.errors
+              hlp_stack::errors=args.errors,
+              hlp_stack::promisc=1
              ),
           m_b(
               hlp_stack::interface=args.b_interface,
@@ -113,7 +114,8 @@ class rlnc_helper : public signal, public io
               hlp_stack::destination=args.b_neighbor,
               hlp_stack::symbols=args.symbols,
               hlp_stack::symbol_size=args.symbol_size,
-              hlp_stack::errors=args.errors
+              hlp_stack::errors=args.errors,
+              hlp_stack::promisc=1
              )
     {
         using std::placeholders::_1;
