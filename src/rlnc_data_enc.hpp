@@ -10,10 +10,12 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
     typedef typename super::buffer_ptr buf_ptr;
 
     stat_counter m_pkt_count = {"enc packets"};
+    stat_counter m_pkt_fail = {"enc failed"};
     stat_counter m_block_count = {"enc blocks"};
     stat_counter m_ack_count = {"enc ack"};
     stat_counter m_late_count = {"enc late"};
     stat_counter m_timeout_count = {"enc timeouts"};
+    stat_counter m_interrupted = {"enc interrupted"};
 
     size_t m_decoder_rank = 0;
     bool m_stopped = false;
@@ -66,8 +68,9 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
     {
         size_t block = super::rlnc_hdr_block(buf);
 
-        if (!validate_block(block))
+        if (!validate_block(block)) {
             return;
+        }
 
         ++m_ack_count;
         base::put_status(buf->data(), &m_decoder_rank);
@@ -95,15 +98,43 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         return m_stopped || base::m_coder->rank() == base::m_coder->symbols();
     }
 
+    bool is_empty()
+    {
+        return base::m_coder->rank() == 0;
+    }
+
     bool write_pkt(buf_ptr &buf_in)
     {
         buf_ptr buf_out = super::buffer();
         put_pkt(buf_in);
 
-        do {
+        if (base::m_coder->rank() < super::rlnc_symbols()) {
             get_pkt(buf_out);
-            super::write_pkt(buf_out);
+            if (!super::write_pkt(buf_out)) {
+                ++m_pkt_fail;
+                return false;
+            }
+
+            super::decrease_budget();
+            return true;
+        }
+
+        do {
+            buf_in->reset();
             buf_out->reset();
+
+            if (read_pkt(buf_in)) {
+                ++m_interrupted;
+                break;
+            }
+
+            get_pkt(buf_out);
+
+            if (!super::write_pkt(buf_out)) {
+                ++m_pkt_fail;
+                return false;
+            }
+
         } while (super::decrease_budget());
 
         return true;
@@ -150,14 +181,12 @@ class rlnc_data_enc : public super, public rlnc_data_base<enc>
         if (m_stopped)
             return;
 
-        ++m_timeout_count;
-        super::increase_budget();
-        buf = super::buffer();
-
-        do {
+        for (size_t i = 0; i < 5; ++i) {
+            buf = super::buffer();
             get_pkt(buf);
             super::write_pkt(buf);
-            buf->reset();
-        } while (super::decrease_budget());
+        }
+
+        ++m_timeout_count;
     }
 };

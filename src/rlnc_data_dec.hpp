@@ -87,7 +87,8 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
 
     bool is_partial_complete() const
     {
-        return base::m_coder->is_symbol_decoded(m_decoded);
+        return base::m_coder->is_complete() ||
+               base::m_coder->is_symbol_decoded(m_decoded);
     }
 
     void send_ack(size_t b, size_t r)
@@ -114,16 +115,20 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
         size_t rank;
         size_t block = super::rlnc_hdr_block(buf);
 
-        if (!validate_block(block) && m_late_pkts++ % 5 == 0) {
-            send_ack(block, base::m_coder->symbols());
+        if (!validate_block(block)) {
+            if (m_late_pkts++ % 5 == 1)
+                send_ack(block, base::m_coder->symbols());
             return;
         }
 
         assert(buf->data_val() % 4u == 0);
+        assert(buf->data_len() >= super::rlnc_symbol_size());
 
         rank = base::m_coder->rank();
         super::rlnc_hdr_del(buf);
         base::m_coder->decode(buf->head());
+
+        assert(base::m_coder->rank() <= base::m_coder->remote_rank());
 
         if (base::m_coder->rank() == rank) {
             ++m_linear;
@@ -132,26 +137,22 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
         } else {
             m_linear = 0;
         }
+
+        if (m_linear < 50)
+            return;
+
+        std::cout << "emergency ack " << base::m_coder->rank() << std::endl;
+        send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
     }
 
     void process_rank()
     {
-        if (m_linear < 3)
-            return;
-
-        if (!is_partial_done())
-            return;
-
-        if (is_complete())
-            return;
-
-        ++m_partial_count;
-        send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
+        if (is_partial_done() && !is_complete() && m_linear % 4 == 1)
+            send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
     }
 
     void increment()
     {
-        send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
         base::increment();
         super::increment();
 
@@ -178,6 +179,14 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
     {
         buf_ptr buf_in = super::buffer();
 
+        if (!is_done() && is_partial_complete()) {
+            get_pkt(buf_out);
+            return true;
+        } else if (is_done()) {
+            increment();
+            return false;
+        }
+
         while (true) {
             super::rlnc_hdr_reserve(buf_in);
 
@@ -190,11 +199,11 @@ class rlnc_data_dec : public super, public rlnc_data_base<dec>
             put_pkt(buf_in);
             process_rank();
             buf_in->reset();
-        }
 
-        if (is_done()) {
-            increment();
-            return false;
+            if (is_complete()) {
+                send_ack(super::rlnc_hdr_block(), base::m_coder->rank());
+                break;
+            }
         }
 
         if (!is_partial_complete())
