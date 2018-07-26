@@ -7,6 +7,7 @@
 #include <endian.h>
 #include <deque>
 #include <cmath>
+#include <cstdlib>
 
 #include "io.hpp"
 #include "signal.hpp"

@@ -17,9 +17,11 @@ static constexpr char default_interface[] = "lo";
 struct eth_sock_args
 {
     static const Kwarg<const char *> interface;
+    static const Kwarg<int> promisc;
 };
 
 decltype(eth_sock_args::interface) eth_sock_args::interface;
+decltype(eth_sock_args::promisc) eth_sock_args::promisc;
 
 template<class super>
 class eth_sock :
@@ -35,6 +37,7 @@ class eth_sock :
     const char *m_interface;
     uint8_t m_address[ETH_ALEN];
     struct sockaddr_ll m_sock_addr = {0};
+    bool m_promisc = false;
 
     void sock_open()
     {
@@ -128,11 +131,15 @@ class eth_sock :
   public:
     template<typename ... Args> explicit
     eth_sock(const Args&... args)
-        : super(args...)
+        : super(args...),
+          m_interface(kwget(interface, default_interface, args...)),
+          m_promisc(kwget(promisc, 0, args...))
     {
-        m_interface = kwget(interface, default_interface, args...);
         sock_open();
-        promisc_on();
+
+        if (m_promisc)
+            promisc_on();
+
         read_address();
         read_index();
         read_mtu();
@@ -147,7 +154,8 @@ class eth_sock :
 
     ~eth_sock()
     {
-        promisc_off();
+        if (m_promisc)
+            promisc_off();
     }
 
     int fd()

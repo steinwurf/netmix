@@ -4,7 +4,7 @@ iface1=tun1
 iface2=tun2
 addr1=192.168.3.101/24
 addr2=192.168.3.102/24
-mtu=1400
+mtu=1446
 
 if [ -d "/sys/class/net/$iface1" ]; then
     sudo ip tuntap del dev $iface1 mode tun || exit 1

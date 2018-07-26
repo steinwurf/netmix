@@ -22,6 +22,7 @@
 #include "buffer_pool.hpp"
 #include "final_layer.hpp"
 #include "io.hpp"
+#include "stat_counter.hpp"
 
 struct args
 {
@@ -54,6 +55,9 @@ struct args
 
     /* milliseconds to wait for ACK */
     ssize_t timeout             = 20;
+
+    /* ratio to multiply source budget with */
+    double overshoot            = 1.05;
 };
 
 static struct option options[] = {
@@ -70,6 +74,7 @@ static struct option options[] = {
     {"e3",          required_argument, NULL, 11},
     {"e4",          required_argument, NULL, 12},
     {"timeout",     required_argument, NULL, 13},
+    {"overshoot",   required_argument, NULL, 14},
     {0}
 };
 
@@ -81,7 +86,7 @@ typedef tcp_hdr<
 
 typedef eth_filter_enc<
         len_hdr<
-        rlnc_data_enc<kodo::sliding_window_encoder<fifi::binary8>,
+        rlnc_data_enc<kodo::sliding_window_encoder<fifi::binary>,
         rlnc_hdr<
         source_budgets<
         eth_hdr<
@@ -95,7 +100,7 @@ typedef eth_filter_enc<
 
 typedef eth_filter_dec<
         len_hdr<
-        rlnc_data_dec<kodo::sliding_window_decoder<fifi::binary8>,
+        rlnc_data_dec<kodo::sliding_window_decoder<fifi::binary>,
         rlnc_hdr<
         eth_hdr<
         loss_dec<
@@ -116,22 +121,24 @@ class rlnc_dencoder : public signal, public io
 
     void read_client(int)
     {
-        bool res;
         buffer_pkt::pointer buf = m_client.buffer();
 
         while (true) {
-            res = m_client.read_pkt(buf);
-
-            if (!res)
-                break;
-
-            m_enc.write_pkt(buf);
-            buf->reset();
-
             if (m_enc.is_full()) {
                 io::disable_read(m_client.fd());
                 break;
             }
+
+            if (!m_client.read_pkt(buf))
+                break;
+
+            if (!m_enc.write_pkt(buf)) {
+                io::enable_write(m_enc.fd());
+                io::disable_read(m_client.fd());
+                break;
+            }
+
+            buf->reset();
         }
     }
 
@@ -154,14 +161,18 @@ class rlnc_dencoder : public signal, public io
         }
     }
 
+    void write_enc(int)
+    {
+        io::disable_write(m_enc.fd());
+        io::enable_read(m_client.fd());
+    }
+
     void read_dec(int)
     {
         buffer_pkt::pointer buf = m_dec.buffer();
 
         while (m_dec.read_pkt(buf)) {
-            std::cout << "write decoded (" << buf->len() << ")" << std::endl;
             if (!m_client.write_pkt(buf)) {
-                std::cout << "break" << std::endl;
                 break;
             }
             buf->reset();
@@ -182,7 +193,8 @@ class rlnc_dencoder : public signal, public io
                 enc_stack::two_hop=args.two_hop,
                 enc_stack::symbols=args.symbols,
                 enc_stack::symbol_size=args.symbol_size,
-                enc_stack::errors=args.errors
+                enc_stack::errors=args.errors,
+                enc_stack::overshoot=args.overshoot
           ),
           m_dec(
                 dec_stack::interface=args.interface,
@@ -198,11 +210,14 @@ class rlnc_dencoder : public signal, public io
 
         auto rc = std::bind(&rlnc_dencoder::read_client, this, _1);
         auto re = std::bind(&rlnc_dencoder::read_enc, this, _1);
+        auto we = std::bind(&rlnc_dencoder::write_enc, this, _1);
         auto rd = std::bind(&rlnc_dencoder::read_dec, this, _1);
 
         io::add_cb(m_client.fd(), rc, NULL);
-        io::add_cb(m_enc.fd(), re, NULL);
+        io::add_cb(m_enc.fd(), re, we);
         io::add_cb(m_dec.fd(), rd, NULL);
+
+        io::disable_write(m_enc.fd());
     }
 
     void run()
@@ -270,13 +285,23 @@ int main(int argc, char **argv)
             case 13:
                 args.timeout = atoi(optarg);
                 break;
+            case 14:
+                args.overshoot = strtod(optarg, NULL);
+                break;
             case '?':
                 return EXIT_FAILURE;
         }
     }
 
     rlnc_dencoder de(args);
-    de.run();
+
+    try {
+        de.run();
+    } catch (const std::runtime_error &re) {
+        std::cout << re.what() << std::endl;
+    }
+
+    std::cout << stat_counter::all;
 
     return EXIT_SUCCESS;
 }

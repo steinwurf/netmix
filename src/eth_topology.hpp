@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string.h>
 #include <linux/if_ether.h>
 #include <netinet/ether.h>
 #include <net/ethernet.h>
 #include <stdexcept>
+#include <cstring>
+#include <cstdlib>
 
 #include "kwargs.hpp"
 

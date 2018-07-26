@@ -128,7 +128,7 @@ class tuntap_base :
     {
         int res;
 
-        res = read(m_fd, buf->data(), buf->max_len());
+        res = read(m_fd, buf->head(), buf->max_len());
 
         if (res > 0) {
             buf->trim(res);

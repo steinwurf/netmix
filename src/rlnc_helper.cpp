@@ -17,6 +17,7 @@
 #include "buffer_pool.hpp"
 #include "final_layer.hpp"
 #include "io.hpp"
+#include "stat_counter.hpp"
 
 struct args {
     /* first interface to use */
@@ -56,7 +57,7 @@ static struct option options[] = {
 };
 
 typedef eth_filter_hlp<
-        rlnc_data_hlp<kodo::sliding_window_decoder<fifi::binary8>,
+        rlnc_data_hlp<kodo::sliding_window_decoder<fifi::binary>,
         rlnc_hdr<
         helper_budgets<
         eth_hdr<
@@ -103,7 +104,8 @@ class rlnc_helper : public signal, public io
               hlp_stack::destination=args.a_neighbor,
               hlp_stack::symbols=args.symbols,
               hlp_stack::symbol_size=args.symbol_size,
-              hlp_stack::errors=args.errors
+              hlp_stack::errors=args.errors,
+              hlp_stack::promisc=1
              ),
           m_b(
               hlp_stack::interface=args.b_interface,
@@ -112,7 +114,8 @@ class rlnc_helper : public signal, public io
               hlp_stack::destination=args.b_neighbor,
               hlp_stack::symbols=args.symbols,
               hlp_stack::symbol_size=args.symbol_size,
-              hlp_stack::errors=args.errors
+              hlp_stack::errors=args.errors,
+              hlp_stack::promisc=1
              )
     {
         using std::placeholders::_1;
@@ -184,6 +187,8 @@ int main(int argc, char **argv)
 
     rlnc_helper h(args);
     h.run();
+
+    std::cout << stat_counter::all;
 
     return EXIT_SUCCESS;
 }
